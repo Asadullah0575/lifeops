@@ -1,0 +1,21 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject"],
+      "Resource": "arn:aws:s3:::lifeops-documents-adetayo/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Scan", "dynamodb:Query"],
+      "Resource": [
+        "arn:aws:dynamodb:us-east-1:210288271673:table/lifeops-tasks",
+        "arn:aws:dynamodb:us-east-1:210288271673:table/lifeops-reminders",
+        "arn:aws:dynamodb:us-east-1:210288271673:table/lifeops-actions",
+        "arn:aws:dynamodb:us-east-1:210288271673:table/lifeops-approvals",
+        "arn:aws:dynamodb:us-east-1:210288271673:table/lifeops-memory"
+      ]
+    }
+  ]
+}

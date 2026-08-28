@@ -1,0 +1,17 @@
+{
+  "targets": {
+    "default": {
+      "resources": {
+        "runtimes": {
+          "lifeopsAgent": {
+            "runtimeId": "lifeopsAgent_lifeopsAgent-LN65dx7Y64",
+            "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:210288271673:runtime/lifeopsAgent_lifeopsAgent-LN65dx7Y64",
+            "roleArn": "arn:aws:iam::210288271673:role/AgentCore-lifeopsAgent-de-ApplicationAgentLifeopsAg-oq8ltHQmRObG"
+          }
+        },
+        "stackName": "AgentCore-lifeopsAgent-default",
+        "deployHash": "04c780b6fcc34a0f"
+      }
+    }
+  }
+}
