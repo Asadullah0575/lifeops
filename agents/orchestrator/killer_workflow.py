@@ -1,39 +1,12 @@
-import uuid
-from datetime import datetime, timezone
-
-import boto3
 from strands import Agent, tool
 from strands.models import BedrockModel
 
 from document_intake import upload_document, extract_document_data
 from action_agent import create_task, create_reminder
 from verification_agent import record_action, verify_action, request_approval
-
-dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
-memory_table = dynamodb.Table("lifeops-memory")
+from memory_agentcore import save_memory, search_memory
 
 model = BedrockModel(model_id="deepseek.v3.2", region_name="us-east-1", temperature=0.1)
-
-
-@tool
-def save_memory(fact: str, category: str) -> str:
-    """Save a useful fact or preference for future reference."""
-    memory_id = str(uuid.uuid4())
-    memory_table.put_item(Item={
-        "memory_id": memory_id,
-        "fact": fact,
-        "category": category,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
-    return memory_id
-
-
-@tool
-def search_memory(query: str) -> str:
-    """Search saved facts for ones relevant to the query."""
-    items = memory_table.scan().get("Items", [])
-    matches = [i["fact"] for i in items if query.lower() in i["fact"].lower()]
-    return "\n".join(matches) if matches else "No matching memory found."
 
 
 def build_orchestrator() -> Agent:
@@ -81,5 +54,5 @@ def run_workflow(local_path: str, document_id: str) -> dict:
 
 
 if __name__ == "__main__":
-    result = run_workflow("./sample_receipt.txt", "receipt-killer-002")
+    result = run_workflow("./sample_receipt.txt", "receipt-killer-003")
     print(result)
