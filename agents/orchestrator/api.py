@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from document_intake import orchestrator, extract_document_data
+from killer_workflow import run_workflow
 
 app = FastAPI()
 
@@ -25,9 +25,11 @@ async def upload(file: UploadFile = File(...)):
     with temp_path.open("wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    orchestrator(f"Upload the file at {temp_path} with document_id '{document_id}'.")
-    facts = extract_document_data(document_id)
-
+    workflow = run_workflow(str(temp_path), document_id)
     temp_path.unlink(missing_ok=True)
 
-    return {"document_id": document_id, "facts": facts.model_dump()}
+    return {
+        "document_id": document_id,
+        "facts": workflow["facts"],
+        "result": workflow["result"],
+    }

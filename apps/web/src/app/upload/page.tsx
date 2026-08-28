@@ -15,6 +15,7 @@ type DocumentFacts = {
 type UploadResult = {
     document_id: string;
     facts: DocumentFacts;
+    result: string;
 };
 
 export default function UploadPage() {
@@ -57,16 +58,23 @@ export default function UploadPage() {
             {error && <p className="text-red-600">{error}</p>}
 
             {result && (
-                <div className="border rounded-lg p-4 space-y-2">
-                    <p className="text-sm text-gray-500">
-                        Document ID: {result.document_id}
-                    </p>
-                    {Object.entries(result.facts).map(([key, value]) => (
-                        <div key={key} className="flex justify-between border-b py-1">
-                            <span className="font-medium capitalize">{key}</span>
-                            <span>{value}</span>
-                        </div>
-                    ))}
+                <div className="space-y-6">
+                    <div className="border rounded-lg p-4 space-y-2">
+                        <p className="text-sm text-gray-500">
+                            Document ID: {result.document_id}
+                        </p>
+                        {Object.entries(result.facts).map(([key, value]) => (
+                            <div key={key} className="flex justify-between border-b py-1">
+                                <span className="font-medium capitalize">{key}</span>
+                                <span>{value}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="border rounded-lg p-4 bg-gray-50">
+                        <p className="text-sm font-medium mb-2">What LifeOps did</p>
+                        <p className="text-sm whitespace-pre-wrap">{result.result}</p>
+                    </div>
                 </div>
             )}
         </main>

@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timezone
+from typing import Literal
 
 import boto3
 from strands import Agent, tool
@@ -13,8 +14,13 @@ model = BedrockModel(model_id="deepseek.v3.2", region_name="us-east-1")
 
 
 @tool
-def create_task(title: str, due_date: str, priority: str, source_id: str) -> str:
-    """Create a new task with a title, due date, priority, and a source document/context id."""
+def create_task(
+    title: str,
+    due_date: str,
+    priority: Literal["low", "medium", "high"],
+    source_id: str,
+) -> str:
+    """Create a new task. due_date must be in YYYY-MM-DD format, e.g. 2026-09-19."""
     task_id = str(uuid.uuid4())
     tasks_table.put_item(Item={
         "task_id": task_id,
@@ -60,7 +66,7 @@ def complete_task(task_id: str) -> str:
 
 @tool
 def create_reminder(title: str, scheduled_for: str, related_task_id: str) -> str:
-    """Create a reminder tied to a task, scheduled for a given date."""
+    """Create a reminder tied to a task. scheduled_for must be in YYYY-MM-DD format."""
     reminder_id = str(uuid.uuid4())
     reminders_table.put_item(Item={
         "reminder_id": reminder_id,
@@ -94,6 +100,7 @@ action_agent = Agent(
         "You are the Action Agent. Given a responsibility, call create_task to "
         "create a task for it, then call create_reminder tied to that task's id, "
         "scheduled a few days before the due date. Use clear, specific titles. "
+        "Always express due_date and scheduled_for in YYYY-MM-DD format. "
         "If asked to update, complete, or cancel something that doesn't exist, "
         "report the error plainly rather than guessing."
     ),
