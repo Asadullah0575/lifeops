@@ -20,7 +20,20 @@ def create_task(
     priority: Literal["low", "medium", "high"],
     source_id: str,
 ) -> str:
-    """Create a new task. due_date must be in YYYY-MM-DD format, e.g. 2026-09-19."""
+    """Create a new task. due_date must be in YYYY-MM-DD format, e.g. 2026-09-19.
+    If an open task already exists for this source_id and due_date, returns
+    the existing task's id instead of creating a duplicate."""
+    existing = tasks_table.scan(
+        ConsistentRead=True,
+        FilterExpression="source_id = :sid AND due_date = :dd AND #s = :open",
+        ExpressionAttributeNames={"#s": "status"},
+        ExpressionAttributeValues={
+            ":sid": source_id, ":dd": due_date, ":open": "open"
+        },
+    ).get("Items", [])
+    if existing:
+        return existing[0]["task_id"]
+
     task_id = str(uuid.uuid4())
     tasks_table.put_item(Item={
         "task_id": task_id,
@@ -66,7 +79,17 @@ def complete_task(task_id: str) -> str:
 
 @tool
 def create_reminder(title: str, scheduled_for: str, related_task_id: str) -> str:
-    """Create a reminder tied to a task. scheduled_for must be in YYYY-MM-DD format."""
+    """Create a reminder tied to a task. scheduled_for must be in YYYY-MM-DD format.
+    If a reminder already exists for this task, returns the existing reminder's id."""
+    existing = reminders_table.scan(
+        ConsistentRead=True,
+        FilterExpression="related_task_id = :tid AND #s = :active",
+        ExpressionAttributeNames={"#s": "status"},
+        ExpressionAttributeValues={":tid": related_task_id, ":active": "active"},
+    ).get("Items", [])
+    if existing:
+        return existing[0]["reminder_id"]
+
     reminder_id = str(uuid.uuid4())
     reminders_table.put_item(Item={
         "reminder_id": reminder_id,

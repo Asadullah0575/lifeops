@@ -1,0 +1,11 @@
+{
+  "Records": [
+    {
+      "s3": {
+        "object": {
+          "key": "documents/receipt-001"
+        }
+      }
+    }
+  ]
+}

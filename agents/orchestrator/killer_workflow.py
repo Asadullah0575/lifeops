@@ -8,51 +8,98 @@ from memory_agentcore import save_memory, search_memory
 
 model = BedrockModel(model_id="deepseek.v3.2", region_name="us-east-1", temperature=0.1)
 
+RISK_KEYWORDS = ["refund", "payment", "delete", "cancel subscription", "charge"]
 
-def build_orchestrator() -> Agent:
-    """Create a fresh orchestrator with no memory of prior requests."""
-    return Agent(
+
+def _is_high_risk(text: str) -> bool:
+    lowered = text.lower()
+    return any(word in lowered for word in RISK_KEYWORDS)
+
+
+def _build_responsibilities(facts) -> list[dict]:
+    """Deterministically list responsibilities from structured facts, rather
+    than relying on the model to notice them in free-form text."""
+    items = []
+    if facts.deadline and facts.deadline.strip().lower() != "not present":
+        items.append({
+            "kind": "return_deadline",
+            "text": f"Return/deadline: {facts.deadline}, based on purchase date {facts.date}",
+            "due_hint": facts.deadline,
+        })
+    if facts.warranty and facts.warranty.strip().lower() != "not present":
+        items.append({
+            "kind": "warranty",
+            "text": f"Warranty: {facts.warranty}, based on purchase date {facts.date}",
+            "due_hint": facts.warranty,
+        })
+    return items
+
+
+def _process_responsibility(item: dict, facts, document_id: str) -> str:
+    """Handle exactly one responsibility deterministically: risk check, then
+    either approval or the task/reminder/verify chain, never both, never
+    skipped, never duplicated. No model judgment involved in whether this
+    runs, only in the wording of the title."""
+    if _is_high_risk(item["text"]):
+        approval_id = request_approval(
+            action_type=item["kind"],
+            summary=f"Action requires approval: {item['text']}",
+            details=item["text"],
+            risk_level="high",
+        )
+        return f"Paused for approval ({approval_id}): {item['text']}"
+
+    title_agent = Agent(
         model=model,
         system_prompt=(
-            "You handle a document end to end, given already-extracted facts. "
-            "This is a new, independent request with no connection to any "
-            "other document. Do not reason about patterns across documents "
-            "or reference prior requests. Follow these steps in order, every time:\n"
-            "1. Decide if there is a responsibility to act on. A deadline, return "
-            "window, due date, or expiration counts as a responsibility, even if "
-            "no immediate action is required today. If there is one, call "
-            "create_task, then create_reminder tied to it.\n"
-            "2. Judge risk based solely on this document's content: routine tasks "
-            "and reminders are low risk. Anything involving money, deletions, or "
-            "irreversible third-party actions is high risk. If low or medium risk "
-            "and you created a task, call record_action then verify_action. If "
-            "high risk, call request_approval instead and do not create a task "
-            "or reminder.\n"
-            "3. Always call save_memory exactly once with a useful fact from this "
-            "document, such as a preference, retailer, or recurring pattern, "
-            "tagged with a category. Do this even if no task was needed.\n"
-            "4. Report a clear final summary of exactly what you did."
+            "Given a responsibility description, reply with ONLY a short, "
+            "clear task title, nothing else, no explanation."
         ),
-        tools=[
-            create_task, create_reminder,
-            record_action, verify_action, request_approval,
-            save_memory, search_memory,
-        ],
     )
+    title = str(title_agent(item["text"])).strip()
+
+    due_agent_prompt = (
+        f"Purchase date: {facts.date}. Responsibility: {item['due_hint']}. "
+        "Reply with ONLY the resulting date in YYYY-MM-DD format, nothing else."
+    )
+    date_agent = Agent(
+        model=model,
+        system_prompt="Calculate dates precisely. Reply with only YYYY-MM-DD, nothing else.",
+    )
+    due_date = str(date_agent(due_agent_prompt)).strip()
+
+    task_id = create_task(
+        title=title, due_date=due_date, priority="medium", source_id=document_id
+    )
+    create_reminder(
+        title=f"Reminder: {title}", scheduled_for=due_date, related_task_id=task_id
+    )
+    action_id = record_action(
+        action_type=item["kind"], status="completed", tool_used="create_task",
+        metadata=item["text"],
+    )
+    verify_action(action_id)
+    return f"Created task {task_id}: {title} (due {due_date})"
 
 
 def run_workflow(local_path: str, document_id: str) -> dict:
     upload_document(local_path, document_id)
     facts = extract_document_data(document_id)
-    prompt = (
-        f"Extracted facts from document {document_id}: {facts.model_dump()}. "
-        "Process this end to end, following all four steps."
+    responsibilities = _build_responsibilities(facts)
+
+    outcomes = [_process_responsibility(item, facts, document_id) for item in responsibilities]
+
+    memory_agent = Agent(
+        model=model,
+        system_prompt="Given document facts, reply with ONE useful fact worth remembering, nothing else.",
     )
-    orchestrator = build_orchestrator()
-    result = str(orchestrator(prompt))
-    return {"facts": facts.model_dump(), "result": result}
+    fact = str(memory_agent(str(facts.model_dump()))).strip()
+    save_memory(fact=fact, category="document_facts")
+
+    summary = "\n".join(outcomes) if outcomes else "No trackable responsibilities were found."
+    return {"facts": facts.model_dump(), "result": summary}
 
 
 if __name__ == "__main__":
-    result = run_workflow("./sample_receipt.txt", "receipt-killer-003")
+    result = run_workflow("./sample_receipt.txt", "receipt-killer-007")
     print(result)
