@@ -1,10 +1,14 @@
 import boto3
+from datetime import datetime, timezone
 from pydantic import BaseModel
 from strands import Agent, tool
 from strands.models import BedrockModel
 
 s3 = boto3.client("s3", region_name="us-east-1")
 BUCKET = "lifeops-documents-adetayo"
+
+dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
+documents_table = dynamodb.Table("lifeops-documents")
 
 model = BedrockModel(model_id="deepseek.v3.2", region_name="us-east-1", temperature=0.1)
 
@@ -67,3 +71,19 @@ if __name__ == "__main__":
     )
     facts = extract_document_data(document_id)
     print(facts)
+
+
+def save_document_record(document_id: str, facts: DocumentFacts, status: str = "processed") -> None:
+    """Persist a record of this document and its extracted facts."""
+    documents_table.put_item(Item={
+        "document_id": document_id,
+        "product": facts.product,
+        "date": facts.date,
+        "retailer": facts.retailer,
+        "amount": facts.amount,
+        "deadline": facts.deadline,
+        "warranty": facts.warranty,
+        "responsibility": facts.responsibility,
+        "status": status,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })

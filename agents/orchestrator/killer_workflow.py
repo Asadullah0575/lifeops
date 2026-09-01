@@ -1,7 +1,12 @@
+import re
+from datetime import datetime
+
+from dateutil.parser import parse as parse_date
+from dateutil.relativedelta import relativedelta
 from strands import Agent, tool
 from strands.models import BedrockModel
 
-from document_intake import upload_document, extract_document_data
+from document_intake import upload_document, extract_document_data, save_document_record
 from action_agent import create_task, create_reminder
 from verification_agent import record_action, verify_action, request_approval
 from memory_agentcore import save_memory, search_memory
@@ -35,6 +40,27 @@ def _build_responsibilities(facts) -> list[dict]:
     return items
 
 
+DATE_PATTERN = re.compile(r"(\d+)\s*-?\s*(day|week|month|year)s?", re.IGNORECASE)
+VALID_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _calculate_due_date(base_date_text: str, duration_text: str) -> str | None:
+    """Deterministically compute a due date from a base date and a duration
+    phrase like '30 days' or '18-month'. Returns None if either piece
+    can't be parsed, rather than guessing."""
+    match = DATE_PATTERN.search(duration_text)
+    if not match:
+        return None
+    amount, unit = int(match.group(1)), match.group(2).lower()
+    try:
+        base = parse_date(base_date_text)
+    except (ValueError, OverflowError):
+        return None
+    unit_map = {"day": "days", "week": "weeks", "month": "months", "year": "years"}
+    result = base + relativedelta(**{unit_map[unit]: amount})
+    return result.strftime("%Y-%m-%d")
+
+
 def _process_responsibility(item: dict, facts, document_id: str) -> str:
     """Handle exactly one responsibility deterministically: risk check, then
     either approval or the task/reminder/verify chain, never both, never
@@ -58,15 +84,23 @@ def _process_responsibility(item: dict, facts, document_id: str) -> str:
     )
     title = str(title_agent(item["text"])).strip()
 
-    due_agent_prompt = (
-        f"Purchase date: {facts.date}. Responsibility: {item['due_hint']}. "
-        "Reply with ONLY the resulting date in YYYY-MM-DD format, nothing else."
-    )
-    date_agent = Agent(
-        model=model,
-        system_prompt="Calculate dates precisely. Reply with only YYYY-MM-DD, nothing else.",
-    )
-    due_date = str(date_agent(due_agent_prompt)).strip()
+    due_date = _calculate_due_date(facts.date, item['due_hint'])
+
+    if due_date is None:
+        due_agent_prompt = (
+            f"Purchase date: {facts.date}. Responsibility: {item['due_hint']}. "
+            "Reply with ONLY the resulting date in YYYY-MM-DD format, nothing else. "
+            "If you genuinely cannot determine a date, reply with exactly: UNKNOWN"
+        )
+        date_agent = Agent(
+            model=model,
+            system_prompt="Calculate dates precisely. Reply with only YYYY-MM-DD or UNKNOWN, nothing else.",
+        )
+        candidate = str(date_agent(due_agent_prompt)).strip()
+        due_date = candidate if VALID_DATE.match(candidate) else None
+
+    if due_date is None:
+        return f"Skipped, could not determine a valid due date for: {item['text']}"
 
     task_id = create_task(
         title=title, due_date=due_date, priority="medium", source_id=document_id
@@ -85,6 +119,7 @@ def _process_responsibility(item: dict, facts, document_id: str) -> str:
 def run_workflow(local_path: str, document_id: str) -> dict:
     upload_document(local_path, document_id)
     facts = extract_document_data(document_id)
+    save_document_record(document_id, facts)
     responsibilities = _build_responsibilities(facts)
 
     outcomes = [_process_responsibility(item, facts, document_id) for item in responsibilities]
