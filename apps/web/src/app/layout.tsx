@@ -30,6 +30,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <a href="/tasks" className="text-sm text-gray-600">Tasks</a>
           <a href="/documents" className="text-sm text-gray-600">Documents</a>
           <a href="/upload" className="text-sm text-gray-600">Upload</a>
+          <a href="/approvals" className="text-sm text-gray-600">Approvals</a>
+          <a href="/activity" className="text-sm text-gray-600">Activity</a>
         </nav>
         {children}
       </body>

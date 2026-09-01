@@ -21,6 +21,20 @@ def _is_high_risk(text: str) -> bool:
     return any(word in lowered for word in RISK_KEYWORDS)
 
 
+def _relabel_if_high_risk(item: dict) -> dict:
+    """If a responsibility actually involves a keyword like refund or payment,
+    relabel its kind and text so approval screens describe it accurately,
+    rather than keeping the generic return_deadline/warranty label."""
+    if _is_high_risk(item["text"]):
+        matched = next((w for w in RISK_KEYWORDS if w in item["text"].lower()), "financial")
+        return {
+            **item,
+            "kind": matched.replace(" ", "_"),
+            "text": item["text"].replace("Return/deadline", matched.capitalize()),
+        }
+    return item
+
+
 def _build_responsibilities(facts) -> list[dict]:
     """Deterministically list responsibilities from structured facts, rather
     than relying on the model to notice them in free-form text."""
@@ -122,6 +136,7 @@ def run_workflow(local_path: str, document_id: str) -> dict:
     save_document_record(document_id, facts)
     responsibilities = _build_responsibilities(facts)
 
+    responsibilities = [_relabel_if_high_risk(item) for item in responsibilities]
     outcomes = [_process_responsibility(item, facts, document_id) for item in responsibilities]
 
     memory_agent = Agent(

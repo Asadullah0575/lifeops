@@ -109,3 +109,31 @@ if __name__ == "__main__":
     print("\n--- Failure case: verifying an action that doesn't exist ---")
     response = verification_agent("Verify action id 'fake-action-id' directly, nothing else.")
     print(response)
+
+
+def approve_approval(approval_id: str) -> str:
+    """Mark an approval as approved. Returns an error if it doesn't exist."""
+    existing = approvals_table.get_item(Key={"approval_id": approval_id}).get("Item")
+    if not existing:
+        return f"Error: no approval found with id {approval_id}"
+    approvals_table.update_item(
+        Key={"approval_id": approval_id},
+        UpdateExpression="SET #s = :v",
+        ExpressionAttributeNames={"#s": "status"},
+        ExpressionAttributeValues={":v": "approved"},
+    )
+    return f"Approval {approval_id} approved"
+
+
+def reject_approval(approval_id: str) -> str:
+    """Mark an approval as rejected. Returns an error if it doesn't exist."""
+    existing = approvals_table.get_item(Key={"approval_id": approval_id}).get("Item")
+    if not existing:
+        return f"Error: no approval found with id {approval_id}"
+    approvals_table.update_item(
+        Key={"approval_id": approval_id},
+        UpdateExpression="SET #s = :v",
+        ExpressionAttributeNames={"#s": "status"},
+        ExpressionAttributeValues={":v": "rejected"},
+    )
+    return f"Approval {approval_id} rejected"

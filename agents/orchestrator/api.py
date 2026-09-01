@@ -8,6 +8,7 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from killer_workflow import run_workflow
+from verification_agent import approve_approval, reject_approval
 
 app = FastAPI()
 
@@ -85,3 +86,54 @@ async def overview():
         "recent_tasks": sorted(open_tasks, key=lambda x: x.get("due_date", ""))[:5],
         "pending_approvals": pending_approvals[:5],
     }])[0]
+
+
+@app.get("/approvals")
+async def list_approvals():
+    table = dynamodb.Table("lifeops-approvals")
+    items = table.scan().get("Items", [])
+    items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    return _clean(items)
+
+
+@app.post("/approvals/{approval_id}/approve")
+async def approve(approval_id: str):
+    return {"result": approve_approval(approval_id)}
+
+
+@app.post("/approvals/{approval_id}/reject")
+async def reject(approval_id: str):
+    return {"result": reject_approval(approval_id)}
+
+
+@app.get("/activity")
+async def activity():
+    actions_table = dynamodb.Table("lifeops-actions")
+    approvals_table = dynamodb.Table("lifeops-approvals")
+
+    actions = actions_table.scan().get("Items", [])
+    approvals = approvals_table.scan().get("Items", [])
+
+    feed = []
+    for a in actions:
+        feed.append({
+            "kind": "action",
+            "id": a.get("action_id"),
+            "title": f"{a.get('action_type', 'action')} \u2014 {a.get('status', 'unknown')}",
+            "detail": a.get("metadata", ""),
+            "status": a.get("status", "unknown"),
+            "created_at": a.get("created_at", ""),
+            "verified_at": a.get("verified_at"),
+        })
+    for ap in approvals:
+        feed.append({
+            "kind": "approval",
+            "id": ap.get("approval_id"),
+            "title": ap.get("summary", "Approval requested"),
+            "detail": ap.get("details", ""),
+            "status": ap.get("status", "unknown"),
+            "created_at": ap.get("created_at", ""),
+            "risk_level": ap.get("risk_level"),
+        })
+    feed.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    return _clean(feed)
