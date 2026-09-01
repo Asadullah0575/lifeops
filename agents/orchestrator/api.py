@@ -1,14 +1,19 @@
+import logging
 import shutil
 import uuid
-from pathlib import Path
 from decimal import Decimal
+from pathlib import Path
 
 import boto3
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from killer_workflow import run_workflow
 from verification_agent import approve_approval, reject_approval
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("lifeops")
 
 app = FastAPI()
 
@@ -20,6 +25,18 @@ app.add_middleware(
 )
 
 dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
+
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024
+ALLOWED_EXTENSIONS = {".txt", ".pdf"}
+
+
+@app.exception_handler(Exception)
+async def handle_unexpected_error(request: Request, exc: Exception):
+    logger.exception(f"Unhandled error on {request.method} {request.url.path}")
+    return JSONResponse(
+        status_code=500,
+        content={"error": "Something went wrong processing this request."},
+    )
 
 
 def _clean(items):
@@ -37,20 +54,33 @@ def _clean(items):
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type '{ext or 'unknown'}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+        )
+
     document_id = str(uuid.uuid4())
     temp_path = Path(f"/tmp/{document_id}_{file.filename}")
 
-    with temp_path.open("wb") as f:
-        shutil.copyfileobj(file.file, f)
+    try:
+        size = 0
+        with temp_path.open("wb") as f:
+            while chunk := await file.read(1024 * 1024):
+                size += len(chunk)
+                if size > MAX_UPLOAD_SIZE:
+                    raise HTTPException(status_code=413, detail="File too large, 10MB max")
+                f.write(chunk)
 
-    workflow = run_workflow(str(temp_path), document_id)
-    temp_path.unlink(missing_ok=True)
-
-    return {
-        "document_id": document_id,
-        "facts": workflow["facts"],
-        "result": workflow["result"],
-    }
+        workflow = run_workflow(str(temp_path), document_id)
+        return {
+            "document_id": document_id,
+            "facts": workflow["facts"],
+            "result": workflow["result"],
+        }
+    finally:
+        temp_path.unlink(missing_ok=True)
 
 
 @app.get("/tasks")

@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import Literal
@@ -12,6 +13,9 @@ reminders_table = dynamodb.Table("lifeops-reminders")
 
 model = BedrockModel(model_id="deepseek.v3.2", region_name="us-east-1")
 
+VALID_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+ALLOWED_UPDATE_FIELDS = {"title", "due_date", "priority"}
+
 
 @tool
 def create_task(
@@ -23,6 +27,11 @@ def create_task(
     """Create a new task. due_date must be in YYYY-MM-DD format, e.g. 2026-09-19.
     If an open task already exists for this source_id and due_date, returns
     the existing task's id instead of creating a duplicate."""
+    if not VALID_DATE.match(due_date):
+        return f"Error: due_date must be in YYYY-MM-DD format, got '{due_date}'"
+    if not title or not title.strip():
+        return "Error: title cannot be empty"
+
     existing = tasks_table.scan(
         ConsistentRead=True,
         FilterExpression="source_id = :sid AND due_date = :dd AND #s = :open",
@@ -37,7 +46,7 @@ def create_task(
     task_id = str(uuid.uuid4())
     tasks_table.put_item(Item={
         "task_id": task_id,
-        "title": title,
+        "title": title.strip(),
         "due_date": due_date,
         "priority": priority,
         "status": "open",
@@ -49,7 +58,21 @@ def create_task(
 
 @tool
 def update_task(task_id: str, field: str, value: str) -> str:
-    """Update a single field on an existing task. Returns an error message if the task doesn't exist."""
+    """Update a task's title, due_date, or priority. No other fields can be
+    changed through this tool. Returns an error if the task doesn't exist,
+    the field isn't allowed, or the value is invalid for that field."""
+    if field not in ALLOWED_UPDATE_FIELDS:
+        return (
+            f"Error: '{field}' cannot be updated through this tool. "
+            f"Allowed fields: {', '.join(sorted(ALLOWED_UPDATE_FIELDS))}"
+        )
+    if field == "priority" and value not in ("low", "medium", "high"):
+        return f"Error: priority must be low, medium, or high, got '{value}'"
+    if field == "due_date" and not VALID_DATE.match(value):
+        return f"Error: due_date must be in YYYY-MM-DD format, got '{value}'"
+    if field == "title" and not value.strip():
+        return "Error: title cannot be empty"
+
     existing = tasks_table.get_item(Key={"task_id": task_id}).get("Item")
     if not existing:
         return f"Error: no task found with id {task_id}"
@@ -81,6 +104,9 @@ def complete_task(task_id: str) -> str:
 def create_reminder(title: str, scheduled_for: str, related_task_id: str) -> str:
     """Create a reminder tied to a task. scheduled_for must be in YYYY-MM-DD format.
     If a reminder already exists for this task, returns the existing reminder's id."""
+    if not VALID_DATE.match(scheduled_for):
+        return f"Error: scheduled_for must be in YYYY-MM-DD format, got '{scheduled_for}'"
+
     existing = reminders_table.scan(
         ConsistentRead=True,
         FilterExpression="related_task_id = :tid AND #s = :active",
@@ -129,20 +155,3 @@ action_agent = Agent(
     ),
     tools=[create_task, update_task, complete_task, create_reminder, cancel_reminder],
 )
-
-
-if __name__ == "__main__":
-    print("--- Creating a real task and reminder from a responsibility ---")
-    response = action_agent(
-        "Responsibility: Return Sony WH-1000XM5 Headphones by September 19, 2026. "
-        "Source document id: receipt-001."
-    )
-    print(response)
-
-    print("\n--- Failure case: completing a task that doesn't exist ---")
-    response = action_agent("Mark task 'not-a-real-id' as complete.")
-    print(response)
-
-    print("\n--- Failure case: cancelling a reminder that doesn't exist ---")
-    response = action_agent("Cancel reminder 'also-not-real'.")
-    print(response)
