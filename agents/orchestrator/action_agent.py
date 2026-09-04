@@ -25,8 +25,8 @@ def create_task(
     source_id: str,
 ) -> str:
     """Create a new task. due_date must be in YYYY-MM-DD format, e.g. 2026-09-19.
-    If an open task already exists for this source_id and due_date, returns
-    the existing task's id instead of creating a duplicate."""
+    If an open task already exists for this source_id, due_date, and title,
+    returns the existing task's id instead of creating a duplicate."""
     if not VALID_DATE.match(due_date):
         return f"Error: due_date must be in YYYY-MM-DD format, got '{due_date}'"
     if not title or not title.strip():
@@ -34,10 +34,10 @@ def create_task(
 
     existing = tasks_table.scan(
         ConsistentRead=True,
-        FilterExpression="source_id = :sid AND due_date = :dd AND #s = :open",
+        FilterExpression="source_id = :sid AND due_date = :dd AND title = :t AND #s = :open",
         ExpressionAttributeNames={"#s": "status"},
         ExpressionAttributeValues={
-            ":sid": source_id, ":dd": due_date, ":open": "open"
+            ":sid": source_id, ":dd": due_date, ":t": title.strip(), ":open": "open"
         },
     ).get("Items", [])
     if existing:

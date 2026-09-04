@@ -7,13 +7,14 @@ from strands import Agent, tool
 from strands.models import BedrockModel
 
 from document_intake import upload_document, extract_document_data, save_document_record
+from appointment_intake import classify_document_type, extract_appointment_data
 from action_agent import create_task, create_reminder
 from verification_agent import record_action, verify_action, request_approval
 from memory_agentcore import save_memory, search_memory
 
 model = BedrockModel(model_id="deepseek.v3.2", region_name="us-east-1", temperature=0.1)
 
-RISK_KEYWORDS = ["refund", "payment", "delete", "cancel subscription", "charge"]
+RISK_KEYWORDS = ["refund", "payment", "delete", "cancel", "cancellation fee", "charge", "late fee", "penalty"]
 
 
 def _is_high_risk(text: str) -> bool:
@@ -23,8 +24,7 @@ def _is_high_risk(text: str) -> bool:
 
 def _relabel_if_high_risk(item: dict) -> dict:
     """If a responsibility actually involves a keyword like refund or payment,
-    relabel its kind and text so approval screens describe it accurately,
-    rather than keeping the generic return_deadline/warranty label."""
+    relabel its kind and text so approval screens describe it accurately."""
     if _is_high_risk(item["text"]):
         matched = next((w for w in RISK_KEYWORDS if w in item["text"].lower()), "financial")
         return {
@@ -35,9 +35,7 @@ def _relabel_if_high_risk(item: dict) -> dict:
     return item
 
 
-def _build_responsibilities(facts) -> list[dict]:
-    """Deterministically list responsibilities from structured facts, rather
-    than relying on the model to notice them in free-form text."""
+def _build_receipt_responsibilities(facts) -> list[dict]:
     items = []
     if facts.deadline and facts.deadline.strip().lower() != "not present":
         items.append({
@@ -50,6 +48,27 @@ def _build_responsibilities(facts) -> list[dict]:
             "kind": "warranty",
             "text": f"Warranty: {facts.warranty}, based on purchase date {facts.date}",
             "due_hint": facts.warranty,
+        })
+    return items
+
+
+def _build_appointment_responsibilities(facts) -> list[dict]:
+    items = [{
+        "kind": "appointment",
+        "text": (
+            f"Attend {facts.appointment_type} with {facts.provider} on "
+            f"{facts.date} at {facts.time}, location {facts.location}. "
+            f"Prep: {facts.prep_instructions}"
+        ),
+        "due_hint": None,
+        "exact_date": facts.date,
+    }]
+    if facts.cancellation_policy and facts.cancellation_policy.strip().lower() != "not present":
+        items.append({
+            "kind": "cancellation_policy",
+            "text": f"Cancellation policy for {facts.appointment_type}: {facts.cancellation_policy}",
+            "due_hint": None,
+            "exact_date": facts.date,
         })
     return items
 
@@ -75,11 +94,20 @@ def _calculate_due_date(base_date_text: str, duration_text: str) -> str | None:
     return result.strftime("%Y-%m-%d")
 
 
-def _process_responsibility(item: dict, facts, document_id: str) -> str:
+def _resolve_due_date(item: dict, base_date_text: str) -> str | None:
+    """A responsibility either has an exact date already (appointments) or
+    needs one calculated from a duration phrase (receipts)."""
+    if item.get("exact_date"):
+        try:
+            return parse_date(item["exact_date"]).strftime("%Y-%m-%d")
+        except (ValueError, OverflowError):
+            return None
+    return _calculate_due_date(base_date_text, item["due_hint"])
+
+
+def _process_responsibility(item: dict, base_date_text: str, document_id: str) -> str:
     """Handle exactly one responsibility deterministically: risk check, then
-    either approval or the task/reminder/verify chain, never both, never
-    skipped, never duplicated. No model judgment involved in whether this
-    runs, only in the wording of the title."""
+    either approval or the task/reminder/verify chain, never both."""
     if _is_high_risk(item["text"]):
         approval_id = request_approval(
             action_type=item["kind"],
@@ -98,11 +126,11 @@ def _process_responsibility(item: dict, facts, document_id: str) -> str:
     )
     title = str(title_agent(item["text"])).strip()
 
-    due_date = _calculate_due_date(facts.date, item['due_hint'])
+    due_date = _resolve_due_date(item, base_date_text)
 
     if due_date is None:
         due_agent_prompt = (
-            f"Purchase date: {facts.date}. Responsibility: {item['due_hint']}. "
+            f"Base date: {base_date_text}. Responsibility: {item.get('due_hint') or item['text']}. "
             "Reply with ONLY the resulting date in YYYY-MM-DD format, nothing else. "
             "If you genuinely cannot determine a date, reply with exactly: UNKNOWN"
         )
@@ -132,24 +160,35 @@ def _process_responsibility(item: dict, facts, document_id: str) -> str:
 
 def run_workflow(local_path: str, document_id: str) -> dict:
     upload_document(local_path, document_id)
-    facts = extract_document_data(document_id)
-    save_document_record(document_id, facts)
-    responsibilities = _build_responsibilities(facts)
+    document_type = classify_document_type(document_id)
+
+    if document_type == "appointment":
+        facts = extract_appointment_data(document_id)
+        save_document_record(document_id, "appointment", facts.model_dump())
+        responsibilities = _build_appointment_responsibilities(facts)
+        base_date_text = facts.date
+        facts_dict = facts.model_dump()
+    else:
+        facts = extract_document_data(document_id)
+        save_document_record(document_id, "receipt", facts.model_dump())
+        responsibilities = _build_receipt_responsibilities(facts)
+        base_date_text = facts.date
+        facts_dict = facts.model_dump()
 
     responsibilities = [_relabel_if_high_risk(item) for item in responsibilities]
-    outcomes = [_process_responsibility(item, facts, document_id) for item in responsibilities]
+    outcomes = [_process_responsibility(item, base_date_text, document_id) for item in responsibilities]
 
     memory_agent = Agent(
         model=model,
         system_prompt="Given document facts, reply with ONE useful fact worth remembering, nothing else.",
     )
-    fact = str(memory_agent(str(facts.model_dump()))).strip()
-    save_memory(fact=fact, category="document_facts")
+    fact = str(memory_agent(str(facts_dict))).strip()
+    save_memory(fact=fact, category=f"{document_type}_facts")
 
     summary = "\n".join(outcomes) if outcomes else "No trackable responsibilities were found."
-    return {"facts": facts.model_dump(), "result": summary}
+    return {"facts": facts_dict, "document_type": document_type, "result": summary}
 
 
 if __name__ == "__main__":
-    result = run_workflow("./sample_receipt.txt", "receipt-killer-007")
+    result = run_workflow("./sample_appointment.txt", "appointment-killer-001")
     print(result)

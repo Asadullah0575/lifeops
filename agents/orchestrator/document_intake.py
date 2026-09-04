@@ -1,6 +1,6 @@
 import boto3
-from datetime import datetime, timezone
 from pydantic import BaseModel
+from datetime import datetime, timezone
 from strands import Agent, tool
 from strands.models import BedrockModel
 
@@ -23,22 +23,19 @@ class DocumentFacts(BaseModel):
     responsibility: str
 
 
-def build_research_agent() -> Agent:
-    return Agent(
-        model=model,
-        system_prompt=(
-            "You are the Research Agent. This is a new, independent document "
-            "with no connection to any other document you may have seen. "
-            "Extract facts from document text. "
-            "For the deadline field: scan the entire text for any return policy, "
-            "return window, expiration date, or due date, even if the word "
-            "'deadline' never appears literally. A phrase like '30 days from "
-            "purchase date' or 'valid until' counts as a deadline and must be "
-            "captured exactly as written. Only use 'not present' if no such "
-            "time-bound policy exists anywhere in the text. For every other "
-            "field, if it isn't present in the text, set it to 'not present'."
-        ),
-    )
+research_agent = Agent(
+    model=model,
+    system_prompt=(
+        "You are the Research Agent. Extract facts from document text. "
+        "For the deadline field: scan the entire text for any return policy, "
+        "return window, expiration date, or due date, even if the word "
+        "'deadline' never appears literally. A phrase like '30 days from "
+        "purchase date' or 'valid until' counts as a deadline and must be "
+        "captured exactly as written. Only use 'not present' if no such "
+        "time-bound policy exists anywhere in the text. For every other "
+        "field, if it isn't present in the text, set it to 'not present'."
+    ),
+)
 
 
 @tool
@@ -49,12 +46,29 @@ def upload_document(local_path: str, document_id: str) -> str:
     return key
 
 
-def extract_document_data(document_id: str) -> DocumentFacts:
-    """Read a document's raw text content and extract structured facts from it."""
+def get_document_text(document_id: str) -> str:
+    """Read a document's raw text content from S3. Shared by any extraction path."""
     key = f"documents/{document_id}"
     obj = s3.get_object(Bucket=BUCKET, Key=key)
-    text = obj["Body"].read().decode("utf-8", errors="ignore")
-    return build_research_agent().structured_output(DocumentFacts, text)
+    return obj["Body"].read().decode("utf-8", errors="ignore")
+
+
+def extract_document_data(document_id: str) -> DocumentFacts:
+    """Extract structured purchase/receipt facts from a document already in S3."""
+    text = get_document_text(document_id)
+    return research_agent.structured_output(DocumentFacts, text)
+
+
+def save_document_record(document_id: str, document_type: str, fields: dict, status: str = "processed") -> None:
+    """Persist a record of this document, whatever type it is."""
+    item = {
+        "document_id": document_id,
+        "document_type": document_type,
+        "status": status,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    item.update(fields)
+    documents_table.put_item(Item=item)
 
 
 orchestrator = Agent(
@@ -71,19 +85,3 @@ if __name__ == "__main__":
     )
     facts = extract_document_data(document_id)
     print(facts)
-
-
-def save_document_record(document_id: str, facts: DocumentFacts, status: str = "processed") -> None:
-    """Persist a record of this document and its extracted facts."""
-    documents_table.put_item(Item={
-        "document_id": document_id,
-        "product": facts.product,
-        "date": facts.date,
-        "retailer": facts.retailer,
-        "amount": facts.amount,
-        "deadline": facts.deadline,
-        "warranty": facts.warranty,
-        "responsibility": facts.responsibility,
-        "status": status,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
