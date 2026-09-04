@@ -37,6 +37,7 @@ export default function UploadPage() {
         try {
             const res = await fetch("http://localhost:8000/upload", {
                 method: "POST",
+                headers: { "x-api-key": process.env.NEXT_PUBLIC_LIFEOPS_API_KEY || "" },
                 body: formData,
             });
             if (!res.ok) throw new Error(`Server responded ${res.status}`);

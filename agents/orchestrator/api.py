@@ -1,19 +1,29 @@
 import logging
+import os
 import shutil
 import uuid
 from decimal import Decimal
 from pathlib import Path
 
 import boto3
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from dotenv import load_dotenv
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from killer_workflow import run_workflow
 from verification_agent import approve_approval, reject_approval
 
+load_dotenv()
+API_KEY = os.environ.get("LIFEOPS_API_KEY")
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("lifeops")
+
+
+def require_api_key(x_api_key: str = Header(None)):
+    if not API_KEY or x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 app = FastAPI()
 
@@ -53,7 +63,7 @@ def _clean(items):
 
 
 @app.post("/upload")
-async def upload(file: UploadFile = File(...)):
+async def upload(file: UploadFile = File(...), _=Depends(require_api_key)):
     ext = Path(file.filename or "").suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
@@ -127,12 +137,12 @@ async def list_approvals():
 
 
 @app.post("/approvals/{approval_id}/approve")
-async def approve(approval_id: str):
+async def approve(approval_id: str, _=Depends(require_api_key)):
     return {"result": approve_approval(approval_id)}
 
 
 @app.post("/approvals/{approval_id}/reject")
-async def reject(approval_id: str):
+async def reject(approval_id: str, _=Depends(require_api_key)):
     return {"result": reject_approval(approval_id)}
 
 

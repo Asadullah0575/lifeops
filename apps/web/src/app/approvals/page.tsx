@@ -31,7 +31,10 @@ export default function ApprovalsPage() {
     async function handleDecision(id: string, decision: "approve" | "reject") {
         setBusyId(id);
         try {
-            await fetch(`http://localhost:8000/approvals/${id}/${decision}`, { method: "POST" });
+            await fetch(`http://localhost:8000/approvals/${id}/${decision}`, {
+                method: "POST",
+                headers: { "x-api-key": process.env.NEXT_PUBLIC_LIFEOPS_API_KEY || "" },
+            });
             load();
         } finally {
             setBusyId(null);
