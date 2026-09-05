@@ -30,3 +30,11 @@ Use `filter-log-events` instead against the log group
     agentcore deploy
     agentcore invoke '{"document_id": "receipt-001"}'
     agentcore status
+
+## Known limitation: sequential processing
+The API currently processes one upload at a time. Concurrent requests queue
+rather than running in parallel, confirmed by timing two simultaneous uploads,
+which took roughly the sum of both individually rather than overlapping. No
+data crossed between them, safe for single-user demo use. Would need an
+async rewrite of run_workflow to support true concurrency, out of scope
+before the deadline.
