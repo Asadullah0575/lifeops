@@ -73,7 +73,7 @@ export default function UploadPage() {
                 <p className="text-sm text-gray-600">
                     {fileName ? fileName : "Click to choose a file, or drag one here"}
                 </p>
-                <p className="text-xs text-gray-400 mt-1">.txt or .pdf, up to 10MB</p>
+                <p className="text-xs text-gray-400 mt-1">.txt files, up to 10MB</p>
             </div>
 
             {loading && (

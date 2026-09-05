@@ -6,7 +6,7 @@ from dateutil.relativedelta import relativedelta
 from strands import Agent, tool
 from strands.models import BedrockModel
 
-from document_intake import upload_document, extract_document_data, save_document_record
+from document_intake import upload_document, extract_document_data, save_document_record, get_document_text
 from appointment_intake import classify_document_type, extract_appointment_data
 from action_agent import create_task, create_reminder
 from verification_agent import record_action, verify_action, request_approval
@@ -160,6 +160,15 @@ def _process_responsibility(item: dict, base_date_text: str, document_id: str) -
 
 def run_workflow(local_path: str, document_id: str) -> dict:
     upload_document(local_path, document_id)
+
+    text = get_document_text(document_id)
+    if not text or not text.strip():
+        return {
+            "facts": {},
+            "document_type": "unknown",
+            "result": "This document appears to be empty. Nothing could be extracted or processed.",
+        }
+
     document_type = classify_document_type(document_id)
 
     if document_type == "appointment":

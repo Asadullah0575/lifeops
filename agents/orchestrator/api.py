@@ -37,7 +37,7 @@ app.add_middleware(
 dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
 
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024
-ALLOWED_EXTENSIONS = {".txt", ".pdf"}
+ALLOWED_EXTENSIONS = {".txt"}
 
 
 @app.exception_handler(Exception)
