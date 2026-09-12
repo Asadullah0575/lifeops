@@ -8,7 +8,7 @@ function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
     completed: "text-ledger bg-ledger/10 border-ledger/20",
     approved: "text-ledger bg-ledger/10 border-ledger/20",
-    pending: "text-kraft bg-kraft/10 border-kraft/20 animate-pulse",
+    pending: "text-kraft bg-kraft/10 border-kraft/20",
     rejected: "text-stamp bg-stamp/10 border-stamp/20",
   };
   return (
@@ -118,9 +118,9 @@ export default function ActivityPage() {
       {/* Timeline List */}
       {loading ? (
         <div className="space-y-4">
-          <div className="h-20 rounded-2xl bg-ink/5 animate-pulse" />
-          <div className="h-20 rounded-2xl bg-ink/5 animate-pulse" />
-          <div className="h-20 rounded-2xl bg-ink/5 animate-pulse" />
+          <div className="h-20 rounded-2xl bg-ink/5" />
+          <div className="h-20 rounded-2xl bg-ink/5" />
+          <div className="h-20 rounded-2xl bg-ink/5" />
         </div>
       ) : error ? (
         <div className="rounded-2xl bg-stamp/10 border border-stamp/20 p-5 text-sm text-stamp">

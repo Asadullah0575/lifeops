@@ -131,7 +131,7 @@ export default function OverviewPage() {
         <section className="mb-12">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-medium tracking-wide uppercase font-mono text-stamp flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-stamp animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-stamp" />
               Governance Gate &middot; Needs Your Decision
             </h2>
             <Link href="/approvals" className="text-xs text-ink/50 hover:text-ink">
@@ -195,8 +195,8 @@ export default function OverviewPage() {
 
         {loading ? (
           <div className="space-y-2">
-            <div className="h-12 rounded-xl bg-ink/5 animate-pulse" />
-            <div className="h-12 rounded-xl bg-ink/5 animate-pulse" />
+            <div className="h-12 rounded-xl bg-ink/5" />
+            <div className="h-12 rounded-xl bg-ink/5" />
           </div>
         ) : (data?.recent_tasks ?? []).length === 0 ? (
           <div className="rounded-2xl bg-ink/5 border border-ink/10 p-8 text-center">

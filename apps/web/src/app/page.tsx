@@ -15,7 +15,7 @@ export default function LandingPage() {
     <main className="max-w-5xl mx-auto px-6 sm:px-8 py-16 sm:py-24">
       {/* Hero Badge */}
       <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-ink/5 border border-ink/10 text-xs text-kraft mb-6">
-        <span className="w-1.5 h-1.5 rounded-full bg-kraft animate-pulse" />
+        <span className="w-1.5 h-1.5 rounded-full bg-kraft" />
         <span>Autonomous Personal Operations Agent &middot; Built on Strands & AWS</span>
       </div>
 

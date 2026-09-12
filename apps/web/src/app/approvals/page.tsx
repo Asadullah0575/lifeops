@@ -100,7 +100,7 @@ export default function ApprovalsPage() {
           <h2 className="text-sm font-medium tracking-wide uppercase font-mono text-ink/70 flex items-center gap-2">
             <span
               className={`w-2 h-2 rounded-full ${
-                pending.length > 0 ? "bg-stamp animate-pulse" : "bg-ledger"
+                pending.length > 0 ? "bg-stamp" : "bg-ledger"
               }`}
             />
             Awaiting Decision ({pending.length})
@@ -109,8 +109,8 @@ export default function ApprovalsPage() {
 
         {loading ? (
           <div className="space-y-3">
-            <div className="h-28 rounded-2xl bg-ink/5 animate-pulse" />
-            <div className="h-28 rounded-2xl bg-ink/5 animate-pulse" />
+            <div className="h-28 rounded-2xl bg-ink/5" />
+            <div className="h-28 rounded-2xl bg-ink/5" />
           </div>
         ) : error ? (
           <div className="rounded-2xl bg-stamp/10 border border-stamp/20 p-5 text-sm text-stamp">

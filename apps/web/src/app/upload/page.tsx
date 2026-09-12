@@ -246,20 +246,23 @@ export default function UploadPage() {
         </div>
       )}
 
-      {/* Processing Animation */}
+      {/* Processing Indicator */}
       {loading && (
         <div className="rounded-2xl bg-ink/5 border border-ink/10 p-6 mb-8 animate-in fade-in duration-200">
           <div className="flex items-center gap-3 mb-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-kraft animate-pulse" />
+            <span className="w-2.5 h-2.5 rounded-full bg-kraft" />
             <span className="text-sm font-medium text-ink font-mono">
               LifeOps Autonomous Agent Running
             </span>
           </div>
-          <p className="text-xs text-kraft/80 font-mono transition-all">
+          <p className="text-xs text-kraft font-mono transition-all">
             &gt; {STEPS[loadingStep]}
           </p>
-          <div className="w-full bg-ink/10 h-1 rounded-full mt-4 overflow-hidden">
-            <div className="bg-kraft h-full w-2/3 animate-pulse" />
+          <div className="w-full bg-ink/10 h-1.5 rounded-full mt-4 overflow-hidden">
+            <div
+              className="bg-kraft h-full rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${((loadingStep + 1) / STEPS.length) * 100}%` }}
+            />
           </div>
         </div>
       )}

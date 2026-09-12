@@ -71,7 +71,7 @@ export default function Nav() {
                   <span>{link.label}</span>
                   {link.hasBadge && pendingCount > 0 && (
                     <span
-                      className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-stamp/20 text-stamp border border-stamp/30 animate-pulse"
+                      className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-stamp/20 text-stamp border border-stamp/30"
                       title={`${pendingCount} pending approval${pendingCount > 1 ? "s" : ""}`}
                     >
                       {pendingCount}
@@ -85,7 +85,7 @@ export default function Nav() {
 
         <div className="flex items-center gap-3">
           <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-full bg-ink/5 border border-ink/10 text-xs text-ink/60">
-            <span className="w-2 h-2 rounded-full bg-ledger animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-ledger" />
             <span className="font-mono text-[11px] text-ink/70">Strands Agent Active</span>
           </div>
 

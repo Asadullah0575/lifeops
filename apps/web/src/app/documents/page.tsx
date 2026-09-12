@@ -224,8 +224,8 @@ export default function DocumentsPage() {
       {/* Document List */}
       {loading ? (
         <div className="space-y-4">
-          <div className="h-32 rounded-2xl bg-ink/5 animate-pulse" />
-          <div className="h-32 rounded-2xl bg-ink/5 animate-pulse" />
+          <div className="h-32 rounded-2xl bg-ink/5" />
+          <div className="h-32 rounded-2xl bg-ink/5" />
         </div>
       ) : error ? (
         <div className="rounded-2xl bg-stamp/10 border border-stamp/20 p-5 text-sm text-stamp">
