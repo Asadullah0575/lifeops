@@ -12,6 +12,20 @@ type ActivityItem = {
     risk_level?: string;
 };
 
+function StatusTag({ status }: { status: string }) {
+    const styles: Record<string, string> = {
+        completed: "text-ledger bg-ledger/10",
+        approved: "text-ledger bg-ledger/10",
+        pending: "text-kraft bg-kraft/10",
+        rejected: "text-ink/50 bg-ink/5",
+    };
+    return (
+        <span className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ${styles[status] ?? "text-ink/50 bg-ink/5"}`}>
+            {status}
+        </span>
+    );
+}
+
 export default function ActivityPage() {
     const [items, setItems] = useState<ActivityItem[] | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -26,36 +40,25 @@ export default function ActivityPage() {
             .catch((err) => setError(err.message));
     }, []);
 
-    if (error) return <main className="p-8 text-red-600">{error}</main>;
-    if (!items) return <main className="p-8">Loading...</main>;
-
-    const statusColor: Record<string, string> = {
-        completed: "bg-green-100 text-green-700",
-        approved: "bg-green-100 text-green-700",
-        pending: "bg-amber-100 text-amber-700",
-        rejected: "bg-gray-100 text-gray-600",
-    };
+    if (error) return <main className="max-w-4xl px-8 py-14 text-stamp">{error}</main>;
+    if (!items) return <main className="max-w-4xl px-8 py-14 text-ink/50">Loading...</main>;
 
     return (
-        <main className="max-w-3xl mx-auto p-8">
-            <h1 className="text-2xl font-semibold mb-6">Activity</h1>
+        <main className="max-w-4xl px-8 py-14">
+            <h1 className="font-display italic text-5xl font-light text-ink mb-10">Activity</h1>
 
             {items.length === 0 ? (
-                <p className="text-sm text-gray-500">Nothing has happened yet.</p>
+                <p className="text-sm text-ink/50">Nothing has happened yet.</p>
             ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                     {items.map((item) => (
-                        <div key={`${item.kind}-${item.id}`} className="border rounded-lg p-4">
-                            <div className="flex justify-between items-start mb-1">
-                                <p className="font-medium">{item.title}</p>
-                                <span
-                                    className={`text-xs px-2 py-1 rounded-full ${statusColor[item.status] ?? "bg-gray-100 text-gray-600"}`}
-                                >
-                                    {item.status}
-                                </span>
+                        <div key={`${item.kind}-${item.id}`} className="rounded-2xl bg-ink/5 p-5">
+                            <div className="flex items-start justify-between gap-4 mb-2">
+                                <p className="text-ink">{item.title}</p>
+                                <StatusTag status={item.status} />
                             </div>
-                            <p className="text-sm text-gray-500">{item.detail}</p>
-                            <p className="text-xs text-gray-400 mt-1">{item.created_at}</p>
+                            <p className="text-sm text-ink/60 mb-2">{item.detail}</p>
+                            <p className="text-xs text-ink/40 font-mono">{item.created_at}</p>
                         </div>
                     ))}
                 </div>

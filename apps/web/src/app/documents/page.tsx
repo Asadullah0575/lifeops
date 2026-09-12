@@ -29,17 +29,23 @@ type AppointmentDocument = {
 
 type Document = ReceiptDocument | AppointmentDocument;
 
+function TypeTag({ label }: { label: string }) {
+    return (
+        <span className="text-xs text-ink/50 bg-ink/5 px-2 py-1 rounded-full whitespace-nowrap">
+            {label}
+        </span>
+    );
+}
+
 function ReceiptCard({ d }: { d: ReceiptDocument }) {
     return (
-        <div className="border rounded-lg p-4">
-            <div className="flex justify-between items-start mb-2">
-                <p className="font-medium">{d.product}</p>
-                <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 flex items-center gap-1">
-                    🧾 {d.status}
-                </span>
+        <div className="rounded-2xl bg-ink/5 p-5">
+            <div className="flex items-start justify-between gap-4 mb-2">
+                <p className="text-ink">{d.product}</p>
+                <TypeTag label="receipt" />
             </div>
-            <div className="text-sm text-gray-500 space-y-1">
-                <p>{d.retailer} &middot; {d.date} &middot; {d.amount}</p>
+            <div className="text-sm text-ink/60 space-y-1">
+                <p>{d.retailer} &middot; {d.date} &middot; <span className="font-mono">{d.amount}</span></p>
                 <p>Return window: {d.deadline}</p>
                 <p>Warranty: {d.warranty}</p>
             </div>
@@ -49,15 +55,13 @@ function ReceiptCard({ d }: { d: ReceiptDocument }) {
 
 function AppointmentCard({ d }: { d: AppointmentDocument }) {
     return (
-        <div className="border rounded-lg p-4">
-            <div className="flex justify-between items-start mb-2">
-                <p className="font-medium">{d.appointment_type}</p>
-                <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1">
-                    📅 {d.status}
-                </span>
+        <div className="rounded-2xl bg-ink/5 p-5">
+            <div className="flex items-start justify-between gap-4 mb-2">
+                <p className="text-ink">{d.appointment_type}</p>
+                <TypeTag label="appointment" />
             </div>
-            <div className="text-sm text-gray-500 space-y-1">
-                <p>{d.provider} &middot; {d.date} at {d.time}</p>
+            <div className="text-sm text-ink/60 space-y-1">
+                <p>{d.provider} &middot; {d.date} at <span className="font-mono">{d.time}</span></p>
                 <p>{d.location}</p>
                 <p>Prep: {d.prep_instructions}</p>
                 <p>Cancellation: {d.cancellation_policy}</p>
@@ -80,15 +84,15 @@ export default function DocumentsPage() {
             .catch((err) => setError(err.message));
     }, []);
 
-    if (error) return <main className="p-8 text-red-600">{error}</main>;
-    if (!documents) return <main className="p-8">Loading...</main>;
+    if (error) return <main className="max-w-4xl px-8 py-14 text-stamp">{error}</main>;
+    if (!documents) return <main className="max-w-4xl px-8 py-14 text-ink/50">Loading...</main>;
 
     return (
-        <main className="max-w-3xl mx-auto p-8">
-            <h1 className="text-2xl font-semibold mb-6">Documents</h1>
+        <main className="max-w-4xl px-8 py-14">
+            <h1 className="font-display italic text-5xl font-light text-ink mb-10">Documents</h1>
 
             {documents.length === 0 ? (
-                <p className="text-sm text-gray-500">No documents processed yet.</p>
+                <p className="text-sm text-ink/50">No documents processed yet.</p>
             ) : (
                 <div className="space-y-3">
                     {documents.map((d) =>

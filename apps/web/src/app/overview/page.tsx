@@ -37,53 +37,62 @@ export default function OverviewPage() {
             .catch((err) => setError(err.message));
     }, []);
 
-    if (error) return <main className="p-8 text-red-600">{error}</main>;
-    if (!data) return <main className="p-8">Loading...</main>;
+    if (error) return <main className="max-w-2xl mx-auto px-8 py-10 text-stamp">{error}</main>;
+    if (!data) return <main className="max-w-2xl mx-auto px-8 py-10 text-ink/50">Loading...</main>;
 
     return (
-        <main className="max-w-3xl mx-auto p-8 space-y-8">
-            <h1 className="text-2xl font-semibold">Overview</h1>
+        <main className="max-w-2xl mx-auto px-8 py-14">
+            <h1 className="font-display italic text-5xl font-light text-ink mb-10">Overview</h1>
 
-            <div className="grid grid-cols-2 gap-4">
-                <div className="border rounded-lg p-4">
-                    <p className="text-sm text-gray-500">Open tasks</p>
-                    <p className="text-3xl font-semibold">{data.open_task_count}</p>
+            <div className="flex gap-4 mb-12">
+                <div className="rounded-2xl bg-ink/5 px-6 py-5">
+                    <p className="text-4xl font-mono text-kraft">{data.open_task_count}</p>
+                    <p className="text-sm text-ink/60 mt-1">Open tasks</p>
                 </div>
-                <div className="border rounded-lg p-4">
-                    <p className="text-sm text-gray-500">Pending approvals</p>
-                    <p className="text-3xl font-semibold">{data.pending_approval_count}</p>
+                <div className="rounded-2xl bg-ink/5 px-6 py-5">
+                    <p className={`text-4xl font-mono ${data.pending_approval_count > 0 ? "text-stamp" : "text-ink"}`}>
+                        {data.pending_approval_count}
+                    </p>
+                    <p className="text-sm text-ink/60 mt-1">Pending approvals</p>
                 </div>
-            </div>
-
-            <div>
-                <h2 className="text-lg font-medium mb-3">Upcoming</h2>
-                {data.recent_tasks.length === 0 ? (
-                    <p className="text-sm text-gray-500">Nothing due yet.</p>
-                ) : (
-                    <div className="space-y-2">
-                        {data.recent_tasks.map((t) => (
-                            <div key={t.task_id} className="border rounded-lg p-3 flex justify-between">
-                                <span>{t.title}</span>
-                                <span className="text-sm text-gray-500">{t.due_date}</span>
-                            </div>
-                        ))}
-                    </div>
-                )}
             </div>
 
             {data.pending_approvals.length > 0 && (
-                <div>
-                    <h2 className="text-lg font-medium mb-3">Needs your approval</h2>
-                    <div className="space-y-2">
+                <div className="mb-12">
+                    <h2 className="text-sm font-medium text-ink/60 mb-4">Needs your approval</h2>
+                    <div className="space-y-3">
                         {data.pending_approvals.map((a) => (
-                            <div key={a.approval_id} className="border rounded-lg p-3 bg-amber-50">
-                                <p>{a.summary}</p>
-                                <p className="text-sm text-gray-500">Risk: {a.risk_level}</p>
+                            <div
+                                key={a.approval_id}
+                                className="rounded-2xl bg-ink/5 p-5 shadow-[0_8px_30px_rgba(224,146,74,0.12)]"
+                            >
+                                <div className="flex items-start justify-between gap-4">
+                                    <p className="text-sm text-ink">{a.summary}</p>
+                                    <span className="text-xs text-stamp bg-stamp/10 px-2 py-1 rounded-full whitespace-nowrap">
+                                        {a.risk_level} risk
+                                    </span>
+                                </div>
                             </div>
                         ))}
                     </div>
                 </div>
             )}
+
+            <div>
+                <h2 className="text-sm font-medium text-ink/60 mb-4">Upcoming</h2>
+                {data.recent_tasks.length === 0 ? (
+                    <p className="text-sm text-ink/50">Nothing due yet.</p>
+                ) : (
+                    <div className="border-t border-ink/10">
+                        {data.recent_tasks.map((t) => (
+                            <div key={t.task_id} className="flex items-center justify-between py-4 border-b border-ink/10">
+                                <span className="text-sm text-ink">{t.title}</span>
+                                <span className="text-sm text-ink/50 font-mono">{t.due_date}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
         </main>
     );
 }

@@ -43,13 +43,11 @@ export default function UploadPage() {
     }
 
     return (
-        <main className="max-w-3xl mx-auto p-8 space-y-6">
-            <div>
-                <h1 className="text-2xl font-semibold">Upload a document</h1>
-                <p className="text-sm text-gray-500 mt-1">
-                    Receipts, appointment confirmations, or anything with a date LifeOps should track.
-                </p>
-            </div>
+        <main className="max-w-4xl px-8 py-14">
+            <h1 className="font-display italic text-5xl font-light text-ink mb-3">Upload a document</h1>
+            <p className="text-sm text-ink/60 mb-10">
+                Receipts, appointment confirmations, or anything with a date LifeOps should track.
+            </p>
 
             <div
                 onClick={() => inputRef.current?.click()}
@@ -59,7 +57,7 @@ export default function UploadPage() {
                     const file = e.dataTransfer.files?.[0];
                     if (file) handleFile(file);
                 }}
-                className="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-colors"
+                className="border-2 border-dashed border-ink/20 rounded-2xl p-12 text-center cursor-pointer hover:border-ink/40 hover:bg-ink/5 transition-colors mb-6"
             >
                 <input
                     ref={inputRef}
@@ -70,42 +68,40 @@ export default function UploadPage() {
                         if (file) handleFile(file);
                     }}
                 />
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-ink/70">
                     {fileName ? fileName : "Click to choose a file, or drag one here"}
                 </p>
-                <p className="text-xs text-gray-400 mt-1">.txt files, up to 10MB</p>
+                <p className="text-xs text-ink/40 mt-1">.txt files, up to 10MB</p>
             </div>
 
             {loading && (
-                <div className="border rounded-lg p-4 flex items-center gap-3 text-sm text-gray-600">
-                    <span className="h-2 w-2 rounded-full bg-gray-400 animate-pulse" />
+                <div className="rounded-2xl bg-ink/5 p-4 flex items-center gap-3 text-sm text-ink/60 mb-6">
+                    <span className="h-2 w-2 rounded-full bg-kraft animate-pulse" />
                     Processing document...
                 </div>
             )}
 
             {error && (
-                <div className="border border-red-200 bg-red-50 rounded-lg p-4 text-sm text-red-700">
+                <div className="rounded-2xl bg-stamp/10 p-4 text-sm text-stamp mb-6">
                     {error}
                 </div>
             )}
 
             {result && (
                 <div className="space-y-4">
-                    <div className="border rounded-lg p-4 space-y-2">
-                        <p className="text-xs text-gray-400">Document ID: {result.document_id}</p>
+                    <div className="rounded-2xl bg-ink/5 p-5">
+                        <p className="text-xs text-ink/40 mb-3">Document ID: {result.document_id}</p>
                         {Object.entries(result.facts).map(([key, value]) => (
-                            <div key={key} className="flex justify-between border-b last:border-b-0 py-1.5 text-sm">
-                                <span className="font-medium capitalize text-gray-700">
-                                    {key.replace(/_/g, " ")}
-                                </span>
-                                <span className="text-gray-600 text-right">{value}</span>
+                            <div key={key} className="flex justify-between border-b border-ink/10 last:border-b-0 py-2 text-sm">
+                                <span className="text-ink/60 capitalize">{key.replace(/_/g, " ")}</span>
+                                <span className="text-ink text-right">{value}</span>
                             </div>
                         ))}
                     </div>
 
-                    <div className="border rounded-lg p-4 bg-gray-50">
-                        <p className="text-sm font-medium mb-2 text-gray-700">What LifeOps did</p>
-                        <p className="text-sm text-gray-600 whitespace-pre-wrap">{result.result}</p>
+                    <div className="rounded-2xl bg-ink/5 p-5 shadow-[0_8px_30px_rgba(224,146,74,0.10)]">
+                        <p className="text-sm text-ink/60 mb-2">What LifeOps did</p>
+                        <p className="text-sm text-ink whitespace-pre-wrap">{result.result}</p>
                     </div>
                 </div>
             )}

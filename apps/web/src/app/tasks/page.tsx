@@ -8,7 +8,6 @@ type Task = {
   due_date: string;
   priority: string;
   status: string;
-  source_id: string;
 };
 
 export default function TasksPage() {
@@ -25,34 +24,24 @@ export default function TasksPage() {
       .catch((err) => setError(err.message));
   }, []);
 
-  if (error) return <main className="p-8 text-red-600">{error}</main>;
-  if (!tasks) return <main className="p-8">Loading...</main>;
-
-  const priorityColor: Record<string, string> = {
-    high: "bg-red-100 text-red-700",
-    medium: "bg-amber-100 text-amber-700",
-    low: "bg-gray-100 text-gray-600",
-  };
+  if (error) return <main className="max-w-2xl mx-auto px-8 py-10 text-stamp">{error}</main>;
+  if (!tasks) return <main className="max-w-2xl mx-auto px-8 py-10 text-ink/50">Loading...</main>;
 
   return (
-    <main className="max-w-3xl mx-auto p-8">
-      <h1 className="text-2xl font-semibold mb-6">Tasks</h1>
-
+    <main className="max-w-4xl px-8 py-10">
+      <h1 className="font-display italic text-5xl font-light text-ink mb-3">Tasks</h1>
+      <p className="text-sm text-ink/60 mb-10">{tasks.length} open</p>
       {tasks.length === 0 ? (
-        <p className="text-sm text-gray-500">No open tasks.</p>
+        <p className="text-sm text-ink/50">Nothing open right now.</p>
       ) : (
-        <div className="space-y-2">
+        <div className="border-t border-ink/10">
           {tasks.map((t) => (
-            <div key={t.task_id} className="border rounded-lg p-4 flex justify-between items-center">
-              <div>
-                <p className="font-medium">{t.title}</p>
-                <p className="text-sm text-gray-500">Due {t.due_date}</p>
+            <div key={t.task_id} className="flex items-center justify-between py-4 border-b border-ink/10">
+              <div className="flex items-center gap-3">
+                <p className="text-ink">{t.title}</p>
+                <span className="text-xs text-ink/50 bg-ink/5 px-2 py-1 rounded-full">{t.priority}</span>
               </div>
-              <span
-                className={`text-xs px-2 py-1 rounded-full ${priorityColor[t.priority] ?? "bg-gray-100 text-gray-600"}`}
-              >
-                {t.priority}
-              </span>
+              <p className="font-mono text-sm text-ink/60">{t.due_date}</p>
             </div>
           ))}
         </div>
