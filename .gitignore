@@ -1,3 +1,14 @@
 .env
 *.env
 !.env.example
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.class
+
+# Next.js & Node
+node_modules/
+.next/
+out/
+.env*.local
