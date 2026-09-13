@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/Nav";
+import SessionWrapper from "@/components/SessionWrapper";
 
 const plexSans = IBM_Plex_Sans({
   variable: "--font-geist-sans",
@@ -34,8 +35,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${plexSans.variable} ${plexMono.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-paper text-ink">
-        <Nav />
-        {children}
+        <SessionWrapper>
+          <Nav />
+          {children}
+        </SessionWrapper>
       </body>
     </html>
   );

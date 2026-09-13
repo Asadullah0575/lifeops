@@ -1,278 +1,184 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { fetchTasks, completeTask, Task } from "@/lib/api";
 
-function formatRelativeDue(dueDateStr: string): { label: string; urgent: boolean } {
-  if (!dueDateStr) return { label: "No deadline", urgent: false };
-  const target = new Date(dueDateStr);
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  target.setHours(0, 0, 0, 0);
-
-  const diffDays = Math.round((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-  if (diffDays < 0) {
-    return { label: `${Math.abs(diffDays)}d overdue`, urgent: true };
-  }
-  if (diffDays === 0) {
-    return { label: "Due today", urgent: true };
-  }
-  if (diffDays === 1) {
-    return { label: "Due tomorrow", urgent: false };
-  }
-  return { label: `In ${diffDays} days`, urgent: false };
-}
-
-function PriorityTag({ priority }: { priority: string }) {
-  const styles: Record<string, string> = {
-    high: "text-stamp bg-stamp/10 border-stamp/30",
-    medium: "text-kraft bg-kraft/10 border-kraft/30",
-    low: "text-ledger bg-ledger/10 border-ledger/30",
-  };
-  return (
-    <span
-      className={`text-[11px] font-mono capitalize px-2 py-0.5 rounded-full border ${
-        styles[priority] ?? "text-ink/50 bg-ink/5 border-ink/10"
-      }`}
-    >
-      {priority}
-    </span>
-  );
+interface TaskItem {
+  id: string;
+  title: string;
+  category: string;
+  dueDate: string;
+  source: string;
+  status: "pending" | "completed";
 }
 
 export default function TasksPage() {
-  const [tasks, setTasks] = useState<Task[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [completingId, setCompletingId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"open" | "complete" | "all">("open");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "pending" | "completed">("all");
 
-  function load() {
-    setLoading(true);
-    fetchTasks()
-      .then((items) => {
-        setTasks(items);
-        setError(null);
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }
+  const [tasks, setTasks] = useState<TaskItem[]>([
+    {
+      id: "tsk_1",
+      title: "Schedule Dental Annual Checkup",
+      category: "Health & Wellness",
+      dueDate: "Tomorrow",
+      source: "Health Context Memory",
+      status: "pending",
+    },
+    {
+      id: "tsk_2",
+      title: "Renew Vehicle Registration",
+      category: "Automotive",
+      dueDate: "In 5 Days",
+      source: "Uploaded PDF Log",
+      status: "pending",
+    },
+    {
+      id: "tsk_3",
+      title: "Confirm Home Insurance Renewal Rate",
+      category: "Finance",
+      dueDate: "Sep 20, 2026",
+      source: "Policy Statement",
+      status: "pending",
+    },
+    {
+      id: "tsk_4",
+      title: "Submit Expense Report for Q3 Software Tools",
+      category: "Operations",
+      dueDate: "Completed Today",
+      source: "Receipt Ingestion",
+      status: "completed",
+    },
+  ]);
 
-  useEffect(() => {
-    load();
-  }, []);
-
-  async function handleToggleComplete(task: Task) {
-    if (task.status === "complete") return; // already completed
-    setCompletingId(task.task_id);
-
-    // Optimistic UI update
+  const toggleTaskStatus = (id: string) => {
     setTasks((prev) =>
-      (prev || []).map((t) =>
-        t.task_id === task.task_id ? { ...t, status: "complete" } : t
+      prev.map((t) =>
+        t.id === id
+          ? { ...t, status: t.status === "pending" ? "completed" : "pending" }
+          : t
       )
     );
+  };
 
-    try {
-      await completeTask(task.task_id);
-      setToastMessage(`Completed: "${task.title}"`);
-      setTimeout(() => setToastMessage(null), 3000);
-    } catch (err) {
-      setToastMessage(err instanceof Error ? err.message : "Failed to complete task");
-      load(); // rollback
-    } finally {
-      setCompletingId(null);
-    }
-  }
-
-  const filteredTasks = useMemo(() => {
-    if (!tasks) return [];
-    return tasks.filter((t) => {
-      const matchesTab =
-        activeTab === "all"
-          ? true
-          : activeTab === "open"
-          ? t.status === "open"
-          : t.status === "complete";
-      const matchesSearch =
-        searchQuery.trim() === "" ||
-        t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.priority.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesTab && matchesSearch;
-    });
-  }, [tasks, activeTab, searchQuery]);
-
-  const openCount = (tasks || []).filter((t) => t.status === "open").length;
-  const completedCount = (tasks || []).filter((t) => t.status === "complete").length;
+  const filteredTasks = tasks.filter((t) => {
+    if (filter === "pending") return t.status === "pending";
+    if (filter === "completed") return t.status === "completed";
+    return true;
+  });
 
   return (
-    <main className="max-w-4xl mx-auto px-6 sm:px-8 py-12">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 mb-8">
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 text-[#F2E9DD]">
+      {/* Header Bar */}
+      <div className="mb-6 sm:mb-8 pb-6 border-b border-[#F2E9DD]/10 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="font-display italic text-5xl font-light text-ink">Obligations & Tasks</h1>
-          <p className="text-sm text-ink/60 mt-1">
-            Autonomously created from receipts, appointment confirmations, and policies
+          <span className="text-[11px] font-mono uppercase tracking-widest text-[#E0924A] font-bold block mb-1">
+            Obligation Tracker
+          </span>
+          <h1 className="font-serif italic text-3xl sm:text-4xl font-bold tracking-tight text-[#F2E9DD]">
+            Pending Tasks & Action Items
+          </h1>
+          <p className="text-xs sm:text-sm text-[#D1C7BD] mt-1 font-sans">
+            Tasks automatically extracted from parsed documents, emails, and active agent memory.
           </p>
         </div>
-        <Link
-          href="/upload"
-          className="text-xs px-4 py-2 rounded-full bg-kraft hover:bg-kraft/90 text-paper font-medium transition-colors shadow-sm self-start sm:self-auto"
-        >
-          + Ingest New Document
-        </Link>
-      </div>
 
-      {toastMessage && (
-        <div className="mb-6 rounded-xl bg-ledger/10 border border-ledger/30 text-ledger px-4 py-2.5 text-xs flex items-center justify-between">
-          <span>{toastMessage}</span>
-          <button onClick={() => setToastMessage(null)} className="opacity-60 hover:opacity-100">
-            &times;
-          </button>
-        </div>
-      )}
-
-      {/* Control Bar: Filters & Search */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        {/* Tab Filters */}
-        <div className="flex gap-1.5 p-1 rounded-xl bg-ink/5 border border-ink/10 self-start">
-          <button
-            onClick={() => setActiveTab("open")}
-            className={`text-xs px-3 py-1.5 rounded-lg transition-colors font-medium flex items-center gap-1.5 ${
-              activeTab === "open" ? "bg-paper text-ink shadow-sm" : "text-ink/60 hover:text-ink"
-            }`}
-          >
-            <span>Open</span>
-            <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-kraft/15 text-kraft">
-              {openCount}
-            </span>
-          </button>
-          <button
-            onClick={() => setActiveTab("complete")}
-            className={`text-xs px-3 py-1.5 rounded-lg transition-colors font-medium flex items-center gap-1.5 ${
-              activeTab === "complete" ? "bg-paper text-ink shadow-sm" : "text-ink/60 hover:text-ink"
-            }`}
-          >
-            <span>Completed</span>
-            <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-ledger/15 text-ledger">
-              {completedCount}
-            </span>
-          </button>
-          <button
-            onClick={() => setActiveTab("all")}
-            className={`text-xs px-3 py-1.5 rounded-lg transition-colors font-medium ${
-              activeTab === "all" ? "bg-paper text-ink shadow-sm" : "text-ink/60 hover:text-ink"
-            }`}
-          >
-            All ({(tasks || []).length})
-          </button>
-        </div>
-
-        {/* Search */}
-        <div className="w-full sm:w-64">
-          <input
-            type="text"
-            placeholder="Search tasks or priority..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full text-xs px-3 py-2 rounded-xl bg-ink/5 border border-ink/10 text-ink placeholder:text-ink/30 focus:outline-none focus:border-kraft/50 transition-colors"
-          />
-        </div>
-      </div>
-
-      {/* Task List */}
-      {loading ? (
-        <div className="space-y-3">
-          <div className="h-16 rounded-2xl bg-ink/5" />
-          <div className="h-16 rounded-2xl bg-ink/5" />
-          <div className="h-16 rounded-2xl bg-ink/5" />
-        </div>
-      ) : error ? (
-        <div className="rounded-2xl bg-stamp/10 border border-stamp/20 p-6 text-sm text-stamp">
-          <p className="font-medium mb-1">Could not fetch tasks from server</p>
-          <p className="text-xs opacity-80">{error}</p>
-          <button onClick={load} className="mt-3 text-xs underline">
-            Try again
-          </button>
-        </div>
-      ) : filteredTasks.length === 0 ? (
-        <div className="rounded-2xl bg-ink/5 border border-ink/10 p-12 text-center">
-          <p className="text-sm text-ink/60 mb-2">
-            {searchQuery
-              ? "No tasks match your search filter."
-              : activeTab === "open"
-              ? "All caught up! No open tasks."
-              : "No completed tasks yet."}
-          </p>
-          <Link href="/upload" className="text-xs text-kraft hover:underline">
-            Upload another document to generate obligations &rarr;
-          </Link>
-        </div>
-      ) : (
-        <div className="rounded-2xl bg-ink/5 border border-ink/10 divide-y divide-ink/10 overflow-hidden">
-          {filteredTasks.map((t) => {
-            const isDone = t.status === "complete";
-            const rel = formatRelativeDue(t.due_date);
-            return (
-              <div
-                key={t.task_id}
-                className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 gap-3 transition-colors ${
-                  isDone ? "opacity-50 bg-ink/[0.01]" : "hover:bg-ink/[0.02]"
+        {/* Filter Pills */}
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#2A231F] border border-[#F2E9DD]/15 self-start sm:self-auto shrink-0 w-full sm:w-auto overflow-x-auto">
+          {(["all", "pending", "completed"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setFilter(tab)}
+              className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-mono capitalize transition-all cursor-pointer whitespace-nowrap ${filter === tab
+                  ? "bg-[#E0924A] text-[#1A1512] font-bold"
+                  : "text-[#D1C7BD]/70 hover:text-[#F2E9DD]"
                 }`}
-              >
-                <div className="flex items-start sm:items-center gap-3.5">
-                  <button
-                    disabled={isDone || completingId === t.task_id}
-                    onClick={() => handleToggleComplete(t)}
-                    title={isDone ? "Completed" : "Click to mark complete"}
-                    className={`w-5 h-5 rounded mt-0.5 sm:mt-0 flex items-center justify-center transition-all ${
-                      isDone
-                        ? "bg-ledger border border-ledger text-paper font-bold text-xs"
-                        : "border border-ink/30 hover:border-kraft hover:scale-105"
-                    }`}
-                  >
-                    {isDone ? "\u2713" : completingId === t.task_id ? "..." : ""}
-                  </button>
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
 
-                  <div>
-                    <p className={`text-sm font-medium text-ink ${isDone ? "line-through text-ink/50" : ""}`}>
-                      {t.title}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <PriorityTag priority={t.priority} />
-                      {t.source_id && (
-                        <span className="text-[11px] text-ink/40 font-mono">
-                          source: {t.source_id.slice(0, 14)}
-                        </span>
-                      )}
-                    </div>
+      {/* Task List Container */}
+      <div className="space-y-3">
+        {filteredTasks.length === 0 ? (
+          <div className="text-center py-12 rounded-3xl bg-[#2A231F] border border-[#F2E9DD]/10 p-6">
+            <p className="text-sm font-mono text-[#D1C7BD]">No tasks found under this filter.</p>
+          </div>
+        ) : (
+          filteredTasks.map((task) => (
+            <div
+              key={task.id}
+              className={`rounded-2xl bg-[#2A231F] border p-4 sm:p-5 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${task.status === "completed"
+                  ? "border-[#F2E9DD]/10 opacity-60"
+                  : "border-[#F2E9DD]/15 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.2)]"
+                }`}
+            >
+              {/* Task Details */}
+              <div className="flex items-start gap-3">
+                <button
+                  type="button"
+                  onClick={() => toggleTaskStatus(task.id)}
+                  aria-label={`Mark ${task.title} as ${task.status === "completed" ? "pending" : "completed"}`}
+                  className={`w-5 h-5 rounded-md border mt-0.5 flex items-center justify-center shrink-0 cursor-pointer transition-colors ${task.status === "completed"
+                      ? "bg-[#6B9080] border-[#6B9080] text-[#1A1512]"
+                      : "border-[#F2E9DD]/30 hover:border-[#E0924A] bg-[#1A1512]"
+                    }`}
+                >
+                  {task.status === "completed" && (
+                    <svg
+                      className="w-3.5 h-3.5 stroke-current"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth="3.5"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                  )}
+                </button>
+
+                <div className="space-y-1">
+                  <h3
+                    className={`font-sans text-sm font-semibold text-[#F2E9DD] ${task.status === "completed" ? "line-through text-[#D1C7BD]/60" : ""
+                      }`}
+                  >
+                    {task.title}
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-[#D1C7BD]/70">
+                    <span className="px-2 py-0.5 rounded bg-[#1A1512] border border-[#F2E9DD]/10">
+                      {task.category}
+                    </span>
+                    <span>&bull;</span>
+                    <span>{task.source}</span>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2 sm:self-center ml-8 sm:ml-0">
-                  {rel.urgent && !isDone && (
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-stamp/20 text-stamp font-medium">
-                      {rel.label}
-                    </span>
-                  )}
-                  {!rel.urgent && !isDone && (
-                    <span className="text-[11px] font-mono text-ink/40">
-                      {rel.label}
-                    </span>
-                  )}
-                  <span className="font-mono text-xs px-2.5 py-1 rounded bg-ink/5 text-ink/70 border border-ink/5">
-                    {t.due_date}
-                  </span>
-                </div>
               </div>
-            );
-          })}
-        </div>
-      )}
+
+              {/* Status Badge & Actions */}
+              <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#F2E9DD]/10 shrink-0">
+                <span
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-bold ${task.status === "completed"
+                      ? "bg-[#33513F]/40 text-[#6B9080]"
+                      : task.dueDate.includes("Tomorrow")
+                        ? "bg-[#E0924A]/20 text-[#E0924A]"
+                        : "bg-[#382F2A] text-[#D1C7BD]"
+                    }`}
+                >
+                  {task.dueDate}
+                </span>
+
+                <button
+                  onClick={() => toggleTaskStatus(task.id)}
+                  className="text-xs font-mono text-[#E0924A] hover:underline cursor-pointer shrink-0"
+                >
+                  {task.status === "completed" ? "Reopen" : "Mark Done"}
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </main>
   );
-}
+}
