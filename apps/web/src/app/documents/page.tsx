@@ -2,21 +2,13 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-
-interface DocumentItem {
-    id: string;
-    name: string;
-    category: string;
-    date: string;
-    size: string;
-    status: "Verified" | "Parsing" | "Flagged";
-}
+import { DocItem } from "@/lib/lifeops-store";
 
 export default function DocumentsPage() {
     const [search, setSearch] = useState("");
-    const [selectedDoc, setSelectedDoc] = useState<DocumentItem | null>(null);
+    const [selectedDoc, setSelectedDoc] = useState<DocItem | null>(null);
 
-    const defaultDocs: DocumentItem[] = [
+    const defaultDocs: DocItem[] = [
         {
             id: "doc_1",
             name: "Fiber_Telecom_Invoice_Sep2026.pdf",
@@ -43,17 +35,17 @@ export default function DocumentsPage() {
         },
     ];
 
-    const [docs, setDocs] = useState<DocumentItem[]>(defaultDocs);
+    const [docs, setDocs] = useState<DocItem[]>(defaultDocs);
 
     useEffect(() => {
         try {
             const saved = localStorage.getItem("lifeops_user_docs");
             if (saved) {
-                const userDocs: DocumentItem[] = JSON.parse(saved);
+                const userDocs: DocItem[] = JSON.parse(saved);
                 setDocs([...userDocs, ...defaultDocs]);
             }
         } catch (e) {
-            console.error("Failed to load custom docs", e);
+            console.error("Failed to load user docs", e);
         }
     }, []);
 
@@ -113,9 +105,9 @@ export default function DocumentsPage() {
                                 <span className="px-2 py-0.5 rounded bg-[#1A1512] border border-[#F2E9DD]/10 text-[#E0924A]">
                                     {doc.category}
                                 </span>
-                                <span>&bull;</span>
+                                <span>•</span>
                                 <span>{doc.date}</span>
-                                <span>&bull;</span>
+                                <span>•</span>
                                 <span>{doc.size}</span>
                             </div>
                         </div>
@@ -135,14 +127,14 @@ export default function DocumentsPage() {
                                 onClick={() => setSelectedDoc(doc)}
                                 className="text-xs font-mono text-[#E0924A] hover:underline cursor-pointer shrink-0"
                             >
-                                Inspect Data &rarr;
+                                Inspect Data →
                             </button>
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* Inspection Modal */}
+            {/* Modal */}
             {selectedDoc && (
                 <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-[#2A231F] border border-[#F2E9DD]/20 rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-4 shadow-2xl">
@@ -181,7 +173,7 @@ export default function DocumentsPage() {
                             <div className="pt-2">
                                 <span className="block text-[10px] uppercase text-[#E0924A] mb-1">Parsed Vector Strands:</span>
                                 <p className="bg-[#1A1512] p-3 rounded-xl border border-[#F2E9DD]/10 text-[11px] font-mono leading-relaxed">
-                                    [Agent Standard Index]: Verified metadata hash matches production environment records. Indexed for semantic query.
+                                    [Agent Standard Index]: Verified metadata hash matches production environment records. Document is active in memory and synchronized with governance tasks.
                                 </p>
                             </div>
                         </div>
