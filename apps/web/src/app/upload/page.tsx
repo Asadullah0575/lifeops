@@ -16,7 +16,7 @@ export default function UploadPage() {
         }
     };
 
-    const handleDropzoneClick = () => {
+    const triggerFileInput = () => {
         fileInputRef.current?.click();
     };
 
@@ -67,11 +67,12 @@ export default function UploadPage() {
                         </p>
                         <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
                             <button
+                                type="button"
                                 onClick={() => {
                                     setUploadSuccess(false);
                                     setSelectedFile(null);
                                 }}
-                                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#2A231F] border border-[#F2E9DD]/20 text-xs font-bold hover:bg-[#382F2A] transition-colors"
+                                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#2A231F] border border-[#F2E9DD]/20 text-xs font-bold hover:bg-[#382F2A] transition-colors cursor-pointer"
                             >
                                 Upload Another
                             </button>
@@ -85,22 +86,25 @@ export default function UploadPage() {
                     </div>
                 ) : (
                     <div className="space-y-6">
-                        <div
-                            onClick={handleDropzoneClick}
-                            className="border-2 border-dashed border-[#F2E9DD]/20 hover:border-[#E0924A] rounded-2xl p-8 transition-colors cursor-pointer bg-[#1A1512]/50"
+                        {/* Interactive Dropzone Button for Desktop & Mobile */}
+                        <button
+                            type="button"
+                            onClick={triggerFileInput}
+                            className="w-full border-2 border-dashed border-[#F2E9DD]/20 hover:border-[#E0924A] rounded-2xl p-8 transition-colors cursor-pointer bg-[#1A1512]/50 block text-center"
                         >
-                            <div className="w-12 h-12 rounded-full bg-[#2A231F] border border-[#F2E9DD]/15 flex items-center justify-center mx-auto text-[#E0924A] text-xl font-bold mb-3">
+                            <div className="w-12 h-12 rounded-full bg-[#2A231F] border border-[#F2E9DD]/15 flex items-center justify-center mx-auto text-[#E0924A] text-xl font-bold mb-3 pointer-events-none">
                                 &uarr;
                             </div>
-                            <p className="text-sm font-semibold text-[#F2E9DD]">
-                                Tap or drag files here to begin parsing
+                            <p className="text-sm font-semibold text-[#F2E9DD] pointer-events-none">
+                                Tap or click here to choose a file
                             </p>
-                            <p className="text-xs font-mono text-[#D1C7BD]/60 mt-1">
+                            <p className="text-xs font-mono text-[#D1C7BD]/60 mt-1 pointer-events-none">
                                 Supports PDF, PNG, JPG up to 25MB
                             </p>
-                        </div>
+                        </button>
 
                         <button
+                            type="button"
                             onClick={handleSimulatedUpload}
                             disabled={isUploading}
                             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3 rounded-xl bg-[#E0924A] text-[#1A1512] font-bold text-xs hover:bg-[#d4843c] transition-all cursor-pointer shadow-sm disabled:opacity-50"
