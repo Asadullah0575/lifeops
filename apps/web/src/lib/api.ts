@@ -86,6 +86,19 @@ export type UploadResult = {
   sample_id?: string;
 };
 
+export interface DocumentRecord {
+  id: string;
+  name?: string;
+  filename?: string;
+  category?: string;
+  document_type?: string;
+  created_at?: string;
+  size?: string;
+  status?: string;
+  facts?: Record<string, string>;
+  summary?: string;
+}
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const API_KEY = process.env.NEXT_PUBLIC_LIFEOPS_API_KEY || "";
 
@@ -373,3 +386,12 @@ export async function checkHealth(): Promise<{ status: string; service: string; 
   }
 }
 
+export async function deleteDocument(id: string): Promise<void> {
+  const response = await fetch(`/api/documents/${id}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to delete document ${id}`);
+  }
+}

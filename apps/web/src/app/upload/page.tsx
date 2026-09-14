@@ -1,13 +1,29 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, DragEvent, ChangeEvent } from "react";
 import Link from "next/link";
-import { ingestDocumentRecord } from "@/lib/lifeops-store";
+import { uploadDocument, UploadResult } from "@/lib/api";
+
+interface UploadedFileInfo {
+    id: string;
+    name: string;
+    size: string;
+    type: string;
+    category: string;
+    date: string;
+    status: "Verified" | "Parsing" | "Flagged";
+    facts?: Record<string, string>;
+}
+
+const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
 
 export default function UploadPage() {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadSuccess, setUploadSuccess] = useState(false);
-    const [fileName, setFileName] = useState("");
+    const [uploadedFile, setUploadedFile] = useState<UploadedFileInfo | null>(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     const formatFileSize = (bytes: number) => {
@@ -18,23 +34,84 @@ export default function UploadPage() {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
     };
 
-    const processUpload = (name: string, size: string, category: string) => {
-        setIsUploading(true);
-        setFileName(name);
+    const processAndUploadFile = async (file: File) => {
+        setErrorMessage(null);
 
-        setTimeout(() => {
-            ingestDocumentRecord(name, category, size);
-            setIsUploading(false);
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+            setErrorMessage("File exceeds the maximum size limit of 25MB.");
+            return;
+        }
+
+        setIsUploading(true);
+
+        try {
+            // Call your real backend endpoint via api.ts
+            const response: UploadResult = await uploadDocument(file);
+
+            const fileObj: UploadedFileInfo = {
+                id: response.document_id || `doc_${Date.now()}`,
+                name: file.name,
+                size: formatFileSize(file.size),
+                type: file.type || "text/plain",
+                category: response.document_type ? `${response.document_type.toUpperCase()}` : "User Document",
+                date: new Date().toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                }),
+                status: "Verified",
+                facts: response.facts,
+            };
+
+            setUploadedFile(fileObj);
             setUploadSuccess(true);
-        }, 1200);
+        } catch (err: unknown) {
+            console.error("Upload Error:", err);
+            const errorStr = err instanceof Error ? err.message : "Failed to process document with killer_workflow backend.";
+            setErrorMessage(errorStr);
+        } finally {
+            setIsUploading(false);
+        }
     };
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            const category = file.name.endsWith(".pdf") ? "Invoice" : "General";
-            processUpload(file.name, formatFileSize(file.size), category);
+            processAndUploadFile(e.target.files[0]);
         }
+        // Reset file input so selecting the same file twice triggers onChange
+        e.target.value = "";
+    };
+
+    const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            processAndUploadFile(e.dataTransfer.files[0]);
+        }
+    };
+
+    const triggerFileInput = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleReset = () => {
+        setUploadSuccess(false);
+        setUploadedFile(null);
+        setErrorMessage(null);
     };
 
     return (
@@ -43,7 +120,7 @@ export default function UploadPage() {
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileSelect}
-                accept=".pdf,.png,.jpg,.jpeg,.txt"
+                accept=".pdf,.png,.jpg,.jpeg,.txt,text/plain"
                 className="hidden"
             />
 
@@ -55,7 +132,7 @@ export default function UploadPage() {
                     Upload Document or Receipt
                 </h1>
                 <p className="text-xs sm:text-sm text-[#D1C7BD] mt-1 font-sans">
-                    Documents uploaded here are automatically parsed into active memory, generating corresponding approval items, tasks, and activity logs.
+                    Documents uploaded here are processed through Bedrock AgentCore and indexed directly into memory.
                 </p>
             </div>
 
@@ -65,74 +142,81 @@ export default function UploadPage() {
                         <div className="w-12 h-12 rounded-full bg-[#33513F]/40 border border-[#6B9080] text-[#6B9080] flex items-center justify-center mx-auto text-xl font-bold">
                             ✓
                         </div>
-                        <div>
-                            <h3 className="font-serif italic text-2xl font-bold text-[#F2E9DD]">
-                                Document Ingested & Synchronized
-                            </h3>
-                            <p className="text-xs font-mono text-[#D1C7BD] mt-2">
-                                Successfully processed <span className="text-[#E0924A] font-bold">{fileName}</span>. Created corresponding entries in Approvals, Tasks, and Activity.
-                            </p>
-                        </div>
+                        <h3 className="font-serif italic text-2xl font-bold text-[#F2E9DD]">
+                            Document Ingested Successfully
+                        </h3>
 
-                        <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+                        {uploadedFile && (
+                            <div className="max-w-md mx-auto p-4 rounded-xl bg-[#1A1512] border border-[#F2E9DD]/10 text-left flex items-center gap-4">
+                                <div className="p-3 rounded-lg bg-[#2A231F] text-[#E0924A] font-mono text-xs font-bold uppercase">
+                                    {uploadedFile.name.split(".").pop() || "TXT"}
+                                </div>
+                                <div className="truncate flex-1">
+                                    <p className="text-sm font-semibold text-[#F2E9DD] truncate">
+                                        {uploadedFile.name}
+                                    </p>
+                                    <p className="text-xs font-mono text-[#D1C7BD]/60 mt-0.5">
+                                        {uploadedFile.size} • {uploadedFile.date}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setUploadSuccess(false);
-                                    setFileName("");
-                                }}
+                                onClick={handleReset}
                                 className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#2A231F] border border-[#F2E9DD]/20 text-xs font-bold hover:bg-[#382F2A] transition-colors cursor-pointer"
                             >
                                 Upload Another
                             </button>
                             <Link
                                 href="/documents"
-                                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#2A231F] border border-[#F2E9DD]/20 text-xs font-bold hover:bg-[#382F2A] transition-colors"
-                            >
-                                View Documents
-                            </Link>
-                            <Link
-                                href="/approvals"
                                 className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#E0924A] text-[#1A1512] text-xs font-bold hover:bg-[#d4843c] transition-colors"
                             >
-                                View Approvals &rarr;
+                                View Documents →
                             </Link>
                         </div>
                     </div>
                 ) : (
                     <div className="space-y-6">
-                        <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="w-full border-2 border-dashed border-[#F2E9DD]/20 hover:border-[#E0924A] rounded-2xl p-8 transition-colors cursor-pointer bg-[#1A1512]/50 block text-center"
+                        <div
+                            onClick={triggerFileInput}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            className={`w-full border-2 border-dashed rounded-2xl p-8 transition-colors cursor-pointer bg-[#1A1512]/50 block text-center ${isDragging
+                                    ? "border-[#E0924A] bg-[#2A231F]"
+                                    : "border-[#F2E9DD]/20 hover:border-[#E0924A]"
+                                }`}
                         >
                             <div className="w-12 h-12 rounded-full bg-[#2A231F] border border-[#F2E9DD]/15 flex items-center justify-center mx-auto text-[#E0924A] text-xl font-bold mb-3 pointer-events-none">
                                 ↑
                             </div>
                             <p className="text-sm font-semibold text-[#F2E9DD] pointer-events-none">
-                                Tap or click here to choose a file from your device
+                                {isDragging ? "Drop your file here..." : "Tap or click here to choose a file"}
                             </p>
                             <p className="text-xs font-mono text-[#D1C7BD]/60 mt-1 pointer-events-none">
                                 Supports PDF, PNG, JPG, TXT up to 25MB
                             </p>
-                        </button>
-
-                        <div className="relative flex py-2 items-center">
-                            <div className="flex-grow border-t border-[#F2E9DD]/10"></div>
-                            <span className="flex-shrink mx-4 text-[10px] font-mono text-[#D1C7BD]/40 uppercase">Or test ingestion</span>
-                            <div className="flex-grow border-t border-[#F2E9DD]/10"></div>
                         </div>
+
+                        {errorMessage && (
+                            <p className="text-xs font-mono text-red-400 bg-red-950/40 border border-red-800/50 py-2 px-4 rounded-lg">
+                                {errorMessage}
+                            </p>
+                        )}
 
                         <button
                             type="button"
-                            onClick={() => processUpload(`Invoice_Telecom_Sep2026_${Math.floor(Math.random() * 1000)}.pdf`, "1.4 MB", "Utilities")}
+                            onClick={triggerFileInput}
                             disabled={isUploading}
                             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3 rounded-xl bg-[#E0924A] text-[#1A1512] font-bold text-xs hover:bg-[#d4843c] transition-all cursor-pointer shadow-sm disabled:opacity-50"
                         >
                             {isUploading ? (
-                                <span className="font-mono">Parsing Document & Generating System State...</span>
+                                <span className="font-mono">Processing Workflow Strands...</span>
                             ) : (
-                                <span>Simulate Document Ingestion & System Sync</span>
+                                <span>Choose & Process Document</span>
                             )}
                         </button>
                     </div>
