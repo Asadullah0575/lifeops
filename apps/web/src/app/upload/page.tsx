@@ -1,11 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 
 export default function UploadPage() {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadSuccess, setUploadSuccess] = useState(false);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setSelectedFile(e.target.files[0]);
+            handleSimulatedUpload();
+        }
+    };
+
+    const handleDropzoneClick = () => {
+        fileInputRef.current?.click();
+    };
 
     const handleSimulatedUpload = () => {
         setIsUploading(true);
@@ -17,6 +30,15 @@ export default function UploadPage() {
 
     return (
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 text-[#F2E9DD]">
+            {/* Hidden File Input */}
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept=".pdf,.png,.jpg,.jpeg"
+                className="hidden"
+            />
+
             {/* Header */}
             <div className="mb-6 sm:mb-8 pb-6 border-b border-[#F2E9DD]/10">
                 <span className="text-[11px] font-mono uppercase tracking-widest text-[#E0924A] font-bold block mb-1">
@@ -41,11 +63,14 @@ export default function UploadPage() {
                             Document Ingested Successfully
                         </h3>
                         <p className="text-xs font-mono text-[#D1C7BD]">
-                            Extracting line items and scheduling governance checks...
+                            {selectedFile ? `Ingested: ${selectedFile.name}` : "Extracting line items and scheduling governance checks..."}
                         </p>
                         <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
                             <button
-                                onClick={() => setUploadSuccess(false)}
+                                onClick={() => {
+                                    setUploadSuccess(false);
+                                    setSelectedFile(null);
+                                }}
                                 className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#2A231F] border border-[#F2E9DD]/20 text-xs font-bold hover:bg-[#382F2A] transition-colors"
                             >
                                 Upload Another
@@ -60,7 +85,10 @@ export default function UploadPage() {
                     </div>
                 ) : (
                     <div className="space-y-6">
-                        <div className="border-2 border-dashed border-[#F2E9DD]/20 hover:border-[#E0924A] rounded-2xl p-8 transition-colors cursor-pointer bg-[#1A1512]/50">
+                        <div
+                            onClick={handleDropzoneClick}
+                            className="border-2 border-dashed border-[#F2E9DD]/20 hover:border-[#E0924A] rounded-2xl p-8 transition-colors cursor-pointer bg-[#1A1512]/50"
+                        >
                             <div className="w-12 h-12 rounded-full bg-[#2A231F] border border-[#F2E9DD]/15 flex items-center justify-center mx-auto text-[#E0924A] text-xl font-bold mb-3">
                                 &uarr;
                             </div>
