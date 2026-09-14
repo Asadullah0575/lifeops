@@ -4,9 +4,13 @@ import { useState, useRef } from "react";
 import Link from "next/link";
 
 interface UploadedFileInfo {
+    id: string;
     name: string;
     size: string;
     type: string;
+    category: string;
+    date: string;
+    status: "Verified" | "Parsing" | "Flagged";
 }
 
 export default function UploadPage() {
@@ -23,15 +27,30 @@ export default function UploadPage() {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
     };
 
+    const saveToLocalStorage = (fileInfo: UploadedFileInfo) => {
+        try {
+            const existing = localStorage.getItem("lifeops_user_docs");
+            const docs = existing ? JSON.parse(existing) : [];
+            localStorage.setItem("lifeops_user_docs", JSON.stringify([fileInfo, ...docs]));
+        } catch (e) {
+            console.error("Failed to save doc to local storage", e);
+        }
+    };
+
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            setUploadedFile({
+            const fileObj: UploadedFileInfo = {
+                id: `doc_${Date.now()}`,
                 name: file.name,
                 size: formatFileSize(file.size),
                 type: file.type || "text/plain",
-            });
-            handleSimulatedUpload();
+                category: file.name.endsWith(".txt") ? "Text Notes" : "User Document",
+                date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+                status: "Verified",
+            };
+            setUploadedFile(fileObj);
+            handleSimulatedUpload(fileObj);
         }
     };
 
@@ -39,16 +58,21 @@ export default function UploadPage() {
         fileInputRef.current?.click();
     };
 
-    const handleSimulatedUpload = () => {
+    const handleSimulatedUpload = (fileObj?: UploadedFileInfo) => {
         setIsUploading(true);
-        if (!uploadedFile) {
-            setUploadedFile({
-                name: "simulated_receipt.txt",
-                size: "12.4 KB",
-                type: "text/plain",
-            });
-        }
+        const docToSave = fileObj || {
+            id: `doc_${Date.now()}`,
+            name: "Simulated_Receipt_Note.txt",
+            size: "12.4 KB",
+            type: "text/plain",
+            category: "General",
+            date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+            status: "Verified",
+        };
+        if (!fileObj) setUploadedFile(docToSave);
+
         setTimeout(() => {
+            saveToLocalStorage(docToSave);
             setIsUploading(false);
             setUploadSuccess(true);
         }, 1500);
@@ -56,7 +80,6 @@ export default function UploadPage() {
 
     return (
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 text-[#F2E9DD]">
-            {/* Hidden File Input including .txt support */}
             <input
                 type="file"
                 ref={fileInputRef}
@@ -65,7 +88,6 @@ export default function UploadPage() {
                 className="hidden"
             />
 
-            {/* Header */}
             <div className="mb-6 sm:mb-8 pb-6 border-b border-[#F2E9DD]/10">
                 <span className="text-[11px] font-mono uppercase tracking-widest text-[#E0924A] font-bold block mb-1">
                     Ingestion Portal
@@ -78,7 +100,6 @@ export default function UploadPage() {
                 </p>
             </div>
 
-            {/* Main Upload Dropzone Card */}
             <div className="rounded-3xl bg-[#2A231F] border border-[#F2E9DD]/15 p-6 sm:p-10 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] text-center">
                 {uploadSuccess ? (
                     <div className="space-y-6 py-4">
@@ -89,7 +110,6 @@ export default function UploadPage() {
                             Document Ingested Successfully
                         </h3>
 
-                        {/* Display File Preview Card */}
                         {uploadedFile && (
                             <div className="max-w-md mx-auto p-4 rounded-xl bg-[#1A1512] border border-[#F2E9DD]/10 text-left flex items-center gap-4">
                                 <div className="p-3 rounded-lg bg-[#2A231F] text-[#E0924A] font-mono text-xs font-bold uppercase">
@@ -100,7 +120,7 @@ export default function UploadPage() {
                                         {uploadedFile.name}
                                     </p>
                                     <p className="text-xs font-mono text-[#D1C7BD]/60 mt-0.5">
-                                        {uploadedFile.size}
+                                        {uploadedFile.size} &bull; {uploadedFile.date}
                                     </p>
                                 </div>
                             </div>
@@ -145,7 +165,7 @@ export default function UploadPage() {
 
                         <button
                             type="button"
-                            onClick={handleSimulatedUpload}
+                            onClick={() => handleSimulatedUpload()}
                             disabled={isUploading}
                             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3 rounded-xl bg-[#E0924A] text-[#1A1512] font-bold text-xs hover:bg-[#d4843c] transition-all cursor-pointer shadow-sm disabled:opacity-50"
                         >

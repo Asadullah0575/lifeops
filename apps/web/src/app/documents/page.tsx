@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 interface DocumentItem {
@@ -14,8 +14,9 @@ interface DocumentItem {
 
 export default function DocumentsPage() {
     const [search, setSearch] = useState("");
+    const [selectedDoc, setSelectedDoc] = useState<DocumentItem | null>(null);
 
-    const docs: DocumentItem[] = [
+    const defaultDocs: DocumentItem[] = [
         {
             id: "doc_1",
             name: "Fiber_Telecom_Invoice_Sep2026.pdf",
@@ -42,6 +43,20 @@ export default function DocumentsPage() {
         },
     ];
 
+    const [docs, setDocs] = useState<DocumentItem[]>(defaultDocs);
+
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem("lifeops_user_docs");
+            if (saved) {
+                const userDocs: DocumentItem[] = JSON.parse(saved);
+                setDocs([...userDocs, ...defaultDocs]);
+            }
+        } catch (e) {
+            console.error("Failed to load custom docs", e);
+        }
+    }, []);
+
     const filteredDocs = docs.filter(
         (d) =>
             d.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -66,7 +81,7 @@ export default function DocumentsPage() {
 
                 <Link
                     href="/upload"
-                    className="w-full sm:w-auto text-center text-xs font-bold px-4 py-2.5 rounded-xl bg-[#E0924A] text-[#1A1512] hover:bg-[#d4843c] transition-colors shrink-0"
+                    className="w-full sm:w-auto text-center text-xs font-bold px-4 py-2.5 rounded-xl bg-[#E0924A] text-[#1A1512] hover:bg-[#d4843c] transition-colors shrink-0 cursor-pointer"
                 >
                     + Upload New Document
                 </Link>
@@ -117,6 +132,7 @@ export default function DocumentsPage() {
 
                             <button
                                 type="button"
+                                onClick={() => setSelectedDoc(doc)}
                                 className="text-xs font-mono text-[#E0924A] hover:underline cursor-pointer shrink-0"
                             >
                                 Inspect Data &rarr;
@@ -125,6 +141,60 @@ export default function DocumentsPage() {
                     </div>
                 ))}
             </div>
+
+            {/* Inspection Modal */}
+            {selectedDoc && (
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-[#2A231F] border border-[#F2E9DD]/20 rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-4 shadow-2xl">
+                        <div className="flex justify-between items-start border-b border-[#F2E9DD]/10 pb-4">
+                            <div>
+                                <span className="text-[10px] font-mono uppercase text-[#E0924A]">Document Inspection</span>
+                                <h3 className="font-mono text-sm font-bold text-[#F2E9DD] break-all">{selectedDoc.name}</h3>
+                            </div>
+                            <button
+                                onClick={() => setSelectedDoc(null)}
+                                className="text-[#D1C7BD] hover:text-white font-mono text-xs px-2 py-1 rounded bg-[#1A1512]"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="space-y-3 text-xs font-mono text-[#D1C7BD]">
+                            <div className="flex justify-between py-1 border-b border-[#F2E9DD]/5">
+                                <span>Category:</span>
+                                <span className="text-[#F2E9DD]">{selectedDoc.category}</span>
+                            </div>
+                            <div className="flex justify-between py-1 border-b border-[#F2E9DD]/5">
+                                <span>Ingestion Date:</span>
+                                <span className="text-[#F2E9DD]">{selectedDoc.date}</span>
+                            </div>
+                            <div className="flex justify-between py-1 border-b border-[#F2E9DD]/5">
+                                <span>File Size:</span>
+                                <span className="text-[#F2E9DD]">{selectedDoc.size}</span>
+                            </div>
+                            <div className="flex justify-between py-1 border-b border-[#F2E9DD]/5">
+                                <span>Agent Status:</span>
+                                <span className={selectedDoc.status === "Verified" ? "text-[#6B9080]" : "text-[#C1442E]"}>
+                                    {selectedDoc.status}
+                                </span>
+                            </div>
+                            <div className="pt-2">
+                                <span className="block text-[10px] uppercase text-[#E0924A] mb-1">Parsed Vector Strands:</span>
+                                <p className="bg-[#1A1512] p-3 rounded-xl border border-[#F2E9DD]/10 text-[11px] font-mono leading-relaxed">
+                                    [Agent Standard Index]: Verified metadata hash matches production environment records. Indexed for semantic query.
+                                </p>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => setSelectedDoc(null)}
+                            className="w-full py-2.5 rounded-xl bg-[#E0924A] text-[#1A1512] font-bold text-xs hover:bg-[#d4843c] transition-colors mt-4"
+                        >
+                            Close Inspector
+                        </button>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }
