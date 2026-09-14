@@ -27,7 +27,7 @@ export default function Navbar() {
                 {/* Brand Logo & Desktop Nav */}
                 <div className="flex items-center gap-6 lg:gap-8">
                     <Link
-                        href="/overview"
+                        href="/"
                         onClick={closeMenu}
                         className="flex items-center gap-2 shrink-0"
                     >
